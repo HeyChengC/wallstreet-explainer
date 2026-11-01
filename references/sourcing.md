@@ -52,3 +52,8 @@
 - 分段下载的音轨偶尔会解码出错（ffmpeg 报 `aac decode_band_types`）。用 `get --audio` 单独再下一次音频，按画面对齐（两条音轨做互相关，算出偏移）。
 - 一段原声里跳着剪几句可以接受，接缝要落在停顿处。
 - 原声画面用全屏；当成反应梗时，放在压暗背景上的小窗里。
+
+## 下载踩坑（做《谷歌给苹果的两百亿》时碰到的）
+
+- YouTube 只要一小段：`--download-sections` 和 HLS（m3u8）格式直连都会断。先 `yt-dlp -F` 找 https dash 格式（1080p 一般是 137），`yt-dlp -f 137 -g URL 2>/dev/null` 拿直链，再 `ffmpeg -ss 起点 -i 直链 -t 秒数 -c copy out.mp4`。不用 cookies。
+- 镜像下大模型会断：`curl -C -` 续传可能把文件拼坏（比该有的还大、加载报 protobuf 错）。先 `curl -sIL` 看 `X-Linked-Size`，循环续传到大小对上，再对 sha256。

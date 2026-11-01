@@ -86,6 +86,31 @@
 
 **开头钩子**（关键词快闪、一个数砸下来、反差并排、悬念循环……）：每条片选一种，见 `opening.md`。
 
+## 走法 → 模板里怎么写（模板档）
+
+模板档里，镜头之间怎么接只有两种写法：这一镜的 `enter`，或者下一镜一开场就放上一镜留下的那样东西（"带过"）。`enter` 只有这几个：`cut`（默认）`flat` `push` `push-right` `through` `blur` `whip` `whip-left` `fade`。同一种不连着用（`--check` 会提醒）。
+
+| 走法 | 模板里怎么写 |
+|---|---|
+| 带过：同一个对象跨镜头 | 没有专门的参数，下一镜的参数里写同一个东西。同一个数：`number` 的 `value` → `title` 的 `brow` → `montage`/`frames` 的 `pin`（`kit/demo/film.js` 第 3–5 镜）；同一个人：先 `person`，之后的 `discs` 用他的 `photo`；同一家公司：每一镜同一个 `color` |
+| 钉住一个东西，底下换实拍 | `montage`（`pin` + `items`）、`title`（`items`；只给一段实拍就连续放，实拍退成底）；上一镜的圆盘钉在角上：`footage` 的 `badge` |
+| 沿着桌面滑过去 | `desk`：`items[].at` 念到哪张滑到哪张，`all` 抬高看全；念到证据时 `read:{i, at}` 把桌面抬平、推近刷黄那一张的 `hl`（`kit/demo/film.js` 第 18 镜） |
+| 平面倒成桌面 | 下一镜 `enter:'flat'`，接 `number`（数从下面立起来）或 `chart`（图表从桌面上立起来）（`kit/demo/film.js` 第 3 镜、第 10 镜）。能接 flat 的只有 `number` `chart` `equation` `change` `stats` 和不带 `items` 的 `title` `statement` |
+| 推近：画框变成下一镜 | `frames` 的 `fill:{i, at}` + 下一镜同一份素材的 `footage`，写 `settle:true`（`kit/demo/film.js` 第 5–6 镜） |
+| 人身后换背景 | `person` 的 `from:{img, at}` |
+| 人站在巨字前面，字随话翻 | `person` 的 `words` + `flip` |
+| 横推换人 | 下一镜 `enter:'push'`，两镜都是 `person` |
+| 卡片在人旁边冒出来 | `person` 的 `cards` |
+| 底下换成实拍（图表缩到一边，身后换工地实拍） | 没有模板：`custom` |
+| 上一镜虚化当底 | 下一镜 `enter:'blur'` |
+| 同一个世界里换机位 | board 系列：节点的 `at`，`steps` 的 `focus` / `light` / `show` |
+| 证据小卡 | board 系列 `steps` 的 `pop:{img 或 clip, from, back}`（`kit/demo/film.js` 第 11 镜）；别的场景之后用 `scene:'popup'`：上一镜冻住压暗、窗口撑开（`kit/demo/film.js` 第 19 镜，接在新闻桌面后面，从"追着问"开始） |
+| 人 ↔ 圆盘、盘撑开成窗口 | 盘撑开成窗口：`pop` 的 `from` 写他的圆盘 id，`clip` 放他的原声实拍；实拍缩成盘：没有模板，`custom` |
+| 镜头沿着差距走 | `bars` 的 `gap`；排行榜：`ranking` 的 `climb` |
+| 推过镜头 | 下一镜 `enter:'through'`，`throughAt:[x,y]` 对准要冲进去的那个东西 |
+| 押注：开头的东西在结尾回来 | 用"带过"：结尾那一镜再用开头那几家的 `photo` 和 `color`；推过去的动作手写 |
+| 开头钩子 | `flash`、`headlines`、`number`、`versus`、`equation`……按这条片的料选，见 `opening.md` 和 `rules.md` 的决策表 |
+
 ## 别这样
 
 - 每个切点都套一个特效。

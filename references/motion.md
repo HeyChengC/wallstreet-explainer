@@ -100,6 +100,39 @@
 | **生成的比喻物件** | 拍不到的东西 | 只生成具体物件（一枚币、一座楼、一条蛇），抠出来放进前后层，同光同调色；写实的标"AI生成" |
 | **开头预告本片的图** | 后面有好东西 | 0.5 秒一张，闪过本片后面会出现的几张图 |
 
+## 手法 → 模板里怎么写（模板档）
+
+模板档里，上面这些手法已经做进场景和接法：动作的时长、方向、前后层、模糊都调好了，镜头表里写参数就行。还是先写 `says`，意思对得上才用。参数以 `kit/scenes.js` 每个场景的 `help` 为准，例子在 `kit/README.md`。
+
+| 手法 | 模板里怎么写 |
+|---|---|
+| 人抠像压巨字 | `scene:'person'`：`img`（抠像）+ `words:['5.2','万亿']` + `color` |
+| 人身后换背景 | `person` 的 `from:{img:'原照片', at:'@b06:市值'}`（抠图和原照片同尺寸） |
+| 巨字随话翻 | `person` 的 `flip:[{at, words}]` |
+| 横推换人 | 下一镜写 `enter:'push'`（两镜都是 `person`；`'push-right'` 往右推） |
+| 卡片在人旁边冒出来 | `person` 的 `cards:[{at, label, value}]`；大数旁边冒小卡：`number` 的 `sub:{label, value, at}` |
+| 钉住一个东西，底下换实拍 | `montage` 的 `pin` + `items`；片名钉住：`title` 的 `items`；金句：`statement` 的 `items`（`title`、`statement` 只给一段实拍时连续放，就是"实拍退成底"）；圆盘徽章钉在角上：`footage` 的 `badge` |
+| 同一个世界里换机位 | board 系列：节点的 `at`，`steps` 的 `focus:id / [ids] / 'all'`；只亮不动镜头用 `light`，出现并放宽看全用 `show` |
+| 平面倒成桌面 | 下一镜写 `enter:'flat'`，接 `number`、`chart`（新主角立在倒下去的上一镜上；图表会从桌面上立起来）。能接 flat 的只有 `number` `chart` `equation` `change` `stats` 和不带 `items` 的 `title` `statement` |
+| 甩出 / 推进来 | 画框：`frames` 的 `items[].at`（念到一样甩进来一样）；整镜：`enter:'whip'` / `'whip-left'` |
+| 上一镜虚化当底 | `enter:'blur'` |
+| 镜头沿着差距走 | `bars` 的 `gap:{at, a, b, text}`；排行榜从末尾走到第一名：`ranking` 的 `climb` |
+| 推过镜头 | `enter:'through'`（`throughAt:[x,y]` 对准要冲进去的那个东西，`throughScale` 放大倍数，默认 1.6） |
+| 画框推满屏 | `frames` 的 `fill:{i, at}` + 下一镜同一份素材的 `footage`，写 `settle:true` |
+| 证据小卡、反应窗 | board 系列 `steps` 里写 `pop:{img 或 clip, from:节点或连线id, back:'@…'}`；不在 board 里：`scene:'popup'`，上一镜冻住压暗，窗口撑开（`kit/demo/film.js` 第 19 镜接在新闻桌面后面，从"追着问"开始） |
+| 累加滚数 | `number` 的 `roll:{from, at, stop}`；board 里 `num` 节点 + `roll:{id, from, until}` 步骤；`chart` 的 `total:{label, from, to}`（跟着线滚）。一条片最多两处 |
+| 慢推（实拍） | `footage` 的 `push:[1,1.06]` + `focus:[x,y]`（往哪一点推） |
+| 原地换状态 | board 系列 `steps`：`nest:[里,外]`（收购）、`gray`（出局）、`mark:{id:'ok'}` / `{id:'no'}`（成不成立）、`link`（线画出来）、`flow`（钱在走）、`loop`（转了一圈）、`tag`（价签换数） |
+| 原文：整页 → 那一句 → 刷黄 | `article` 的 `img` + `hl`（截不到用 `mock` + `mark`）；`zoom` 是镜头开始推向那一句的时刻，`hlAt` 是荧光笔刷过的时刻（默认 `zoom` 后 0.6 秒） |
+| 沿着桌面滑过去 | `desk` 的 `items[].at`，`all` 抬高看全部；念到证据时桌面抬平、推近刷黄：`read:{i, at}` + 那一张的 `hl`（`kit/demo/film.js` 第 18 镜） |
+| 关键词快闪 | `scene:'flash'` |
+| 标题墙 → 一句 | `headlines` 的 `pick` + `mark` |
+| 按真实比例的反差 | `versus`（圆盘面积按 `tag.value`） |
+| 地图上飞过去 | `map` 节点的 `at`，或者 `steps` 的 `focus`：隔得远自动先拉远再推近 |
+| 前后层、景深、运动模糊、慢漂 | 模板自动做。board 系列可调 `drift`（慢漂，默认 0.018）、`dof:false`（关掉景深） |
+| 先看一个往里推、先看整体往外拉（开场） | board 系列自动（要改写 `intro:'push'` / `'pull'` / `'none'`） |
+| 东西拿在手上、真火烟粒子叠层、生成的比喻物件、开头预告本片的图、底下换成实拍（图表缩到一边，身后换实拍） | 没有模板：`scene:'custom'` 手写，照上面的手法清单和下面的手法库 |
+
 ## 手法库（`scripts/moves.js`）
 
 复用是为了质量稳定：这些动作在第六版里磨过、逐帧查过，用它们就不会再摔同样的跤（横推的前几帧露出采访者、模糊加太多糊成一片）。复用不是为了凑出一条片。

@@ -5,8 +5,11 @@
 //   node render.mjs --dir film --video --h 720 --range 0:18   # 只渲一段（out/visual_720_range.mp4）
 //   node render.mjs --dir film --video --h 1080           # 成片画面
 //   node render.mjs --dir film --moves [--prev 上一条/out/moves.json]   # 手法用量：每镜用了哪些手法、有没有连着用、和上一条片像不像（out/moves.json）
+//   node render.mjs --dir film --check                    # 模板档：查镜头表（每镜的场景、时长、says、提醒），几秒钟，不渲染
+//   node render.mjs --dir film --sheet                    # 每一镜的开头、中间、末尾三帧拼一张图（out/sheet.png），交片前自己先看
 //   --page index2.html 换一个入口页；--out 目录 换输出目录（默认 <dir>/out）
 // 页面要求：seek 是确定的（同一个 t 永远画出同一帧，不依赖播放时间、不用 CSS 动画），并且 await 图片解码与字体。
+// ffmpeg：PATH 里的 ffmpeg，或环境变量 FFMPEG，或 scripts/local.json 的 ffmpeg。没装 Playwright 自带的 Chromium 时自动改用本机 Edge。
 import fs from 'node:fs/promises'; import path from 'node:path'; import http from 'node:http';
 import {spawn} from 'node:child_process'; import {once} from 'node:events';
 import {createRequire} from 'node:module'; import fsSync from 'node:fs'; import {fileURLToPath} from 'node:url';
@@ -22,6 +25,8 @@ function loadPlaywright() {
   throw new Error('找不到 playwright：npm i playwright，或在 scripts/local.json 写 playwright_from 指向装了它的 package.json');
 }
 const {chromium} = loadPlaywright();
+let LOCAL = {}; try { LOCAL = JSON.parse(fsSync.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'local.json'), 'utf8')); } catch {}
+const FF = process.env.FFMPEG ?? LOCAL.ffmpeg ?? 'ffmpeg';
 const here = path.resolve(arg('--dir') ?? '.'), PAGE = arg('--page') ?? 'index.html';
 const H = Number(arg('--h') ?? 720), Wd = Math.round(H * 16 / 9), out = arg('--out') ? path.resolve(arg('--out')) : path.join(here, 'out');
 await fs.mkdir(out, {recursive: true});
@@ -38,14 +43,15 @@ if (!worker) {
   await new Promise(r => server.listen(0, '127.0.0.1', r)); port = server.address().port;
 }
 async function page() {
-  const b = await chromium.launch({args: ['--force-color-profile=srgb', '--disable-lcd-text']});
+  const opt = {args: ['--force-color-profile=srgb', '--disable-lcd-text']};
+  let b; try { b = await chromium.launch(opt); } catch (e) { b = await chromium.launch({...opt, channel: 'msedge'}).catch(() => { throw e; }); }
   const p = await b.newPage({viewport: {width: Wd, height: H}}); const errs = [], warns = [];
   p.on('pageerror', e => errs.push(e.message));
-  p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); else if (m.type() === 'warning' && m.text().startsWith('[moves]')) warns.push(m.text()); });
+  p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); else if (m.type() === 'warning' && /^\[(moves|kit)\]/.test(m.text())) warns.push(m.text()); });
   p.on('requestfailed', q => errs.push('请求失败 ' + q.url())); p.on('response', s => { if (s.status() >= 400) errs.push(s.status() + ' ' + s.url()); });
   await p.goto(`http://127.0.0.1:${port}/${PAGE}`);
   try { await p.evaluate(() => window.ready); }
-  catch (e) { console.error('页面没准备好：', e.message.split('\n')[0], [...new Set(errs)].slice(0, 8)); await b.close(); process.exit(3); }
+  catch (e) { console.error('页面没准备好：\n' + e.message.split('\n').filter(l => !/^\s+at /.test(l)).slice(0, 14).join('\n'), [...new Set(errs)].slice(0, 8)); await b.close(); process.exit(3); }
   return {b, p, errs, warns};
 }
 if (arg('--stills')) {
@@ -53,6 +59,40 @@ if (arg('--stills')) {
   for (const t of ts) { await p.evaluate(t => window.seek(t), t); await p.screenshot({path: path.join(out, `still_${t.toFixed(2)}.png`)}); }
   await b.close(); server.close(); if (errs.length) console.log('页面报错（先修再看帧）：', [...new Set(errs)].slice(0, 8));
   if (warns.length) console.log([...new Set(warns)].join('\n')); console.log('stills', ts.length); process.exit(0);
+}
+// ---------- 模板档：查镜头表（kit.js 的 K.film 登记的） ----------
+if (has('--check')) {
+  const {b, p, errs} = await page();
+  const r = await p.evaluate(() => window.KIT_REPORT ?? null);
+  await b.close(); server.close();
+  if (errs.length) console.log('页面报错（先修）：\n- ' + [...new Set(errs)].slice(0, 8).join('\n- '));
+  if (!r) { console.log('页面里没有镜头表：film.js 没用 K.film（手写的片子用 --moves 查手法）'); process.exit(0); }
+  fsSync.writeFileSync(path.join(out, 'check.json'), JSON.stringify(r, null, 1));   // 同一份镜头表和提醒，给别的脚本读（kit/gallery/make.py）
+  console.log('镜  时间            时长   场景        接法       says');
+  for (const s of r.shots) console.log(`${String(s.i + 1).padStart(2)}  ${s.t0.toFixed(1).padStart(5)}–${s.t1.toFixed(1).padEnd(6)} ${(s.t1 - s.t0).toFixed(1).padStart(4)}s  ${s.scene.padEnd(10)} ${s.enter.padEnd(10)} ${s.says || '（没写）'}`);
+  console.log(r.warns.length ? `\n要看一眼（${r.warns.length} 条）：\n- ` + r.warns.join('\n- ') : '\n没有要提醒的。');
+  console.log('过了不等于好看：再跑 --sheet 看图。');
+  process.exit(errs.length ? 2 : 0);
+}
+// ---------- 模板档：每一镜开头、中间、末尾三帧拼一张图 ----------
+if (has('--sheet')) {
+  const {b, p, errs, warns} = await page();
+  const shots = await p.evaluate(() => window.KIT_REPORT?.shots ?? (window.FB?.shots ?? []).map((s, i) => ({i, t0: s.t0, t1: s.t1, scene: '', says: ''})));
+  const cells = [];
+  for (const s of shots) for (const [k, t] of [['开头', Math.min(s.t1 - .05, s.t0 + .35)], ['中间', (s.t0 + s.t1) / 2], ['末尾', Math.max(s.t0, s.t1 - .12)]]) {
+    await p.evaluate(t => window.seek(t), t);
+    cells.push({i: s.i, k, t, src: 'data:image/jpeg;base64,' + (await p.screenshot({type: 'jpeg', quality: 80})).toString('base64')});
+  }
+  const esc = x => String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const rows = shots.map(s => `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #333"><div style="width:230px;font-size:15px;line-height:1.45"><b style="font-size:20px;color:#fff">${s.i + 1} ${esc(s.scene)}</b><br>${s.t0.toFixed(1)}–${s.t1.toFixed(1)} 秒<br>${esc(s.says)}</div>` +
+    cells.filter(c => c.i === s.i).map(c => `<div style="position:relative"><img src="${c.src}" style="width:480px;height:270px;display:block"><span style="position:absolute;left:6px;top:4px;font-size:13px;background:#000a;padding:1px 6px">${c.k} ${c.t.toFixed(2)}</span></div>`).join('') + '</div>').join('');
+  const sp = await b.newPage({viewport: {width: 1720, height: 600}});
+  await sp.setContent(`<html><body style="margin:0;background:#111;color:#ccc;font-family:'Microsoft YaHei',sans-serif">${rows}</body></html>`, {waitUntil: 'load'});
+  await sp.screenshot({path: path.join(out, 'sheet.png'), fullPage: true});
+  await b.close(); server.close();
+  if (errs.length) console.log('页面报错（先修再看图）：\n- ' + [...new Set(errs)].slice(0, 8).join('\n- '));
+  if (warns.length) console.log([...new Set(warns)].join('\n'));
+  console.log(`${shots.length} 镜 → ${path.join(out, 'sheet.png')}`); process.exit(0);
 }
 // ---------- 手法用量（moves.js 记下的） ----------
 const TRANS = new Set(['pushSwap', 'pushThrough', 'blurToBase', 'frameFill']);   // 进场的转场
@@ -97,7 +137,7 @@ if (has('--moves')) {
 const fps = T.fps ?? 30, N = Math.ceil(T.duration * fps);
 if (worker) {
   const [a, z] = worker.split(':').map(Number); const {b, p, errs} = await page();
-  const enc = spawn('ffmpeg', ['-v', 'error', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-framerate', String(fps), '-i', 'pipe:0', '-c:v', 'libx264', '-preset', 'medium',
+  const enc = spawn(FF, ['-v', 'error', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-framerate', String(fps), '-i', 'pipe:0', '-c:v', 'libx264', '-preset', 'medium',
     '-crf', H >= 1080 ? '14' : '18', '-pix_fmt', 'yuv420p', '-r', String(fps), path.join(out, `seg_${H}_${a}.mp4`)], {stdio: ['pipe', 'ignore', 'inherit']});
   for (let f = a; f < z; f++) { await p.evaluate(t => window.seek(t), f / fps); const buf = await p.screenshot({type: 'jpeg', quality: H >= 1080 ? 96 : 92}); if (!enc.stdin.write(buf)) await once(enc.stdin, 'drain'); }
   enc.stdin.end(); await once(enc, 'exit'); await b.close(); if (errs.length) { console.error([...new Set(errs)].slice(0, 5)); process.exit(2); } process.exit(0);
@@ -110,5 +150,23 @@ await Promise.all(Array.from({length: K}, (_, i) => { const a = F0 + i * size, z
 starts.sort((a, b) => a - b);
 await fs.writeFile(path.join(out, `list_${H}.txt`), starts.map(s => `file 'seg_${H}_${s}.mp4'`).join('\n'));
 const vout = path.join(out, RG ? `visual_${H}_range.mp4` : `visual_${H}.mp4`);
-await new Promise((res, rej) => { const c = spawn('ffmpeg', ['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', path.join(out, `list_${H}.txt`), '-c', 'copy', vout], {stdio: 'inherit'}); c.on('exit', x => x === 0 ? res() : rej()); });
+await new Promise((res, rej) => { const c = spawn(FF, ['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', path.join(out, `list_${H}.txt`), '-c', 'copy', vout], {stdio: 'inherit'}); c.on('exit', x => x === 0 ? res() : rej()); });
 server.close(); console.log('rendered', F1 - F0, 'frames in', ((Date.now() - t0) / 1000).toFixed(1), 's ->', vout);
+// 空画面检查：一段画面几乎是纯色（标签没闭合把一镜套进上一镜一起藏了、图片 404、时刻算错都会这样）。
+// 《谷歌给苹果的两百亿》1080p 结尾 3.5 秒就是这样空着交出去的：改页面后只看了两张静帧。看不了图也能靠这条提醒发现。
+await new Promise(res => {
+  const c = spawn(FF, ['-v', 'error', '-i', vout, '-vf', 'scale=64:36', '-f', 'rawvideo', '-pix_fmt', 'gray', '-'], {stdio: ['ignore', 'pipe', 'inherit']});
+  const bufs = []; c.stdout.on('data', d => bufs.push(d));
+  c.on('exit', () => {
+    const all = Buffer.concat(bufs), n = 64 * 36, runs = []; let s = -1, f = 0;
+    for (; (f + 1) * n <= all.length; f++) {
+      let m = 0, q = 0; for (let i = f * n; i < (f + 1) * n; i++) { m += all[i]; q += all[i] * all[i]; }
+      m /= n; const blank = Math.sqrt(Math.max(0, q / n - m * m)) < 3;
+      if (blank && s < 0) s = f; else if (!blank && s >= 0) { runs.push([s, f]); s = -1; }
+    }
+    if (s >= 0) runs.push([s, f]);
+    const bad = runs.filter(([a, z]) => z - a >= fps * .3).map(([a, z]) => `${((F0 + a) / fps).toFixed(2)}–${((F0 + z) / fps).toFixed(2)} 秒`);
+    if (bad.length) console.log(`画面是空的（几乎纯色，什么都没有）：${bad.join('、')}。查这几秒的镜头：是不是被上一镜的容器套住一起藏了（HTML 标签没闭合）、图片路径 404、时刻算错。`);
+    res();
+  });
+});

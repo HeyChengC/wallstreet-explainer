@@ -1,0 +1,147 @@
+/* kit.css —— 模板库的样式：字体、颜色、字号全在这里，场景模板只引用这些类。改风格改这一份，全片一起变。
+   字号是 1920×1080 舞台上的像素。字体文件在片子的 fonts/（new_film.mjs 联接或拷过来，字体目录写在 scripts/local.json 的 fonts_dir），缺了会退到系统字体。 */
+@font-face{font-family:Num;src:url(../fonts/BebasNeue-Regular.ttf)}
+@font-face{font-family:Shu;src:url(../fonts/AlimamaShuHeiTi-Bold.ttf)}
+@font-face{font-family:Mi;src:url(../fonts/MiSans-Regular.ttf);font-weight:400}
+@font-face{font-family:Mi;src:url(../fonts/MiSans-Medium.ttf),url(../fonts/MiSans-Medium.otf);font-weight:500}
+@font-face{font-family:Mi;src:url(../fonts/MiSans-Semibold.ttf),url(../fonts/MiSans-Semibold.otf);font-weight:600}
+@font-face{font-family:Mi;src:url(../fonts/MiSans-Bold.ttf);font-weight:700}
+@font-face{font-family:Mont;src:url(../fonts/Montserrat-VF.ttf);font-weight:100 900}
+@font-face{font-family:Mont;src:url(../fonts/Montserrat-Italic-VF.ttf);font-weight:100 900;font-style:italic}
+
+#stage{
+ --k-num:Num,'Bebas Neue',Bahnschrift,Impact,sans-serif;
+ --k-han:Shu,'Alimama ShuHeiTi','Noto Sans SC','Microsoft YaHei',sans-serif;
+ --k-ui:Mi,MiSans,'Noto Sans SC','Microsoft YaHei',sans-serif;
+ --k-en:Mont,Montserrat,'Segoe UI',sans-serif;
+ --k-gold1:#fff4d2;--k-gold2:#f6dc8e;--k-gold3:#dcb058;--k-unit:#f2e27e;
+ --k-cream:#f1ead2;--k-paper:#f4f1ea;--k-ok:#2f9e5b;--k-no:#d23c3c;
+ --s25-num:Num;--s25-han:Shu;   /* --s25-grain 由 kit.js 写成相对网页的路径（变量里的 url 按用它的地方解析） */
+}
+.k-abs{position:absolute}
+.k-full{position:absolute;inset:0}
+
+/* ---------- 舞台底：很细的斜纹织物染成这一段的底色，中间略亮、四周压暗（不假装是真实场景） ----------
+   底色只有 navy（默认）/ charcoal / wine；person 用品牌色染（kit.js 的 stage）。织物按原尺寸平铺（3.2px 的斜纹缩放了会糊或起摩尔纹）。
+   颜色光 .glow 默认不画，只有 person 身后有一团品牌色（一大片很淡的椭圆，不是一团亮光） */
+.k-stage{position:absolute;left:-50%;top:-50%;width:200%;height:200%;overflow:hidden;background:radial-gradient(ellipse 30% 30% at var(--gx,50%) var(--gy,48%),var(--a) 0%,var(--b) 100%)}
+.k-stage>.tex{position:absolute;inset:0;background:url(../assets/kit/fabric.jpg) 0 0/1024px 1024px;mix-blend-mode:overlay}
+.k-stage>.glow{position:absolute;inset:0;background:radial-gradient(ellipse 760px 560px at var(--gx,50%) var(--gy,47%),var(--g) 0%,transparent 100%)}
+.k-stage>.rings{position:absolute;inset:0;background:repeating-radial-gradient(circle at var(--gx,50%) var(--gy,47%),rgba(255,255,255,.035) 0 2px,transparent 2px 96px);mix-blend-mode:screen}
+.k-vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 80% 76% at 50% 46%,transparent 48%,rgba(0,0,0,.5) 100%)}
+.k-grain{position:absolute;inset:0;pointer-events:none;background:url(../assets/kit/grain.png) 0 0/360px;mix-blend-mode:overlay;opacity:.14}
+
+/* ---------- 大数字：金色渐变 Bebas Neue；货币符号和数字差不多高，中文单位用数黑体（同一个金色） ---------- */
+.k-num{position:absolute;white-space:nowrap;font-family:var(--k-num);line-height:.84;display:flex;align-items:baseline;filter:drop-shadow(0 8px 22px rgba(0,0,0,.6))}
+.k-num .g,.k-num .c,.k-num .cm,.k-num .u{background:url(../assets/kit/grain.png) 0 0/380px,linear-gradient(180deg,var(--k-gold1) 0%,var(--k-gold2) 50%,var(--k-gold3) 100%);background-blend-mode:soft-light;-webkit-background-clip:text;background-clip:text;color:transparent}
+.k-num .g{display:inline-block;text-align:center}
+.k-num .w{display:inline-block;width:.47em;text-align:center}
+.k-num .cm{display:inline-block;width:.2em;text-align:center}
+.k-num .c{font-size:.84em;margin-right:.02em}
+.k-num .u{font-family:var(--k-han);font-size:.62em;margin-left:.06em;line-height:1}
+.k-num.red .g,.k-num.red .c,.k-num.red .cm,.k-num.red .u{background:url(../assets/kit/grain.png) 0 0/380px,linear-gradient(180deg,#ffd9d4 0%,#ff7e72 52%,#d9463d 100%);background-blend-mode:soft-light;-webkit-background-clip:text;background-clip:text}
+.k-num.white .g,.k-num.white .c,.k-num.white .cm,.k-num.white .u{background:linear-gradient(180deg,#fff 0%,#e4e8ee 100%);-webkit-background-clip:text;background-clip:text}
+
+/* 眉题：一行小号、字距拉开的说明 + 一行更小的英文（一帧最多一组） */
+.k-brow{position:absolute;white-space:nowrap;text-align:center}
+.k-brow b{display:block;font:700 30px var(--k-ui);letter-spacing:7px;color:#d3d9e4;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+.k-brow i{display:block;font:600 15px var(--k-en);letter-spacing:6px;color:rgba(255,255,255,.42);margin-top:9px;font-style:normal;text-transform:uppercase}
+
+/* ---------- 照片圆盘：一家公司 / 一个人一个盘，全片同一个样子 ----------
+   品牌色实心盘；有照片时照片铺满盘、底部压一层品牌色，名字（数黑体）压在盘的下半；细亮边 + 投影。不画厚玻璃斜面和字母 logo */
+.k-disc{position:absolute;border-radius:50%;width:calc(var(--r)*2);height:calc(var(--r)*2);
+ background:radial-gradient(circle at 50% 30%,var(--hi) 0%,var(--c) 58%,var(--lo) 100%);
+ box-shadow:0 0 0 var(--rim) rgba(255,255,255,.86),0 calc(var(--r)*.1) calc(var(--r)*.32) rgba(0,0,0,.55)}
+.k-disc>.ph{position:absolute;inset:0;border-radius:50%;overflow:hidden}
+.k-disc>.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%}
+.k-disc>.ph::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,var(--c) 0%,var(--c) 13%,var(--sh) 33%,transparent 58%)}
+.k-disc>.lg{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);height:calc(var(--r)*.42);max-width:62%;object-fit:contain;filter:brightness(0) invert(1);opacity:.96}
+.k-disc>.nm{position:absolute;left:50%;transform:translate(-50%,-50%);font-family:var(--k-han);color:#fff;letter-spacing:.06em;white-space:nowrap;line-height:1;text-shadow:0 2px 10px rgba(0,0,0,.4)}
+.k-disc>.en{position:absolute;left:50%;transform:translate(-50%,-50%);font:600 calc(var(--r)*.078) var(--k-en);letter-spacing:.2em;color:rgba(255,255,255,.7);white-space:nowrap;text-transform:uppercase}
+.k-disc>.out{position:absolute;left:50%;top:100%;transform:translate(-50%,16px);font:34px var(--k-han);color:#fff;letter-spacing:.08em;white-space:nowrap;text-align:center;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+.k-disc>.out i{display:block;font:600 13px var(--k-en);letter-spacing:.2em;color:rgba(255,255,255,.6);font-style:normal;margin-top:6px;text-transform:uppercase}
+
+/* 价签：盘下面的深色小牌，金色细边 */
+.k-tag{position:absolute;transform:translate(-50%,0);background:linear-gradient(180deg,#1d1f24,#0b0c0f);border:1.5px solid #c9a95a;border-radius:7px;padding:.14em .42em .08em;font-family:var(--k-num);color:#f3e6b8;white-space:nowrap;box-shadow:0 8px 18px rgba(0,0,0,.55);line-height:1;text-align:center}
+.k-tag small{display:block;font:.3em var(--k-han);color:#cdbf94;letter-spacing:.12em;margin-bottom:.12em}
+.k-tag .c{font-size:.8em;margin-right:.02em}
+.k-tag .u{font-family:var(--k-han);font-size:.62em;margin-left:.06em}
+/* 绿色小牌（流程图里的金额） */
+.k-pill{position:absolute;transform:translate(-50%,-50%);background:linear-gradient(180deg,#36a364,#1f6e40);border:1.5px solid rgba(255,255,255,.35);border-radius:9px;padding:.12em .38em .06em;font-family:var(--k-num);color:#fff;white-space:nowrap;box-shadow:0 8px 18px rgba(0,0,0,.5);line-height:1}
+.k-pill .c{font-size:.8em;margin-right:.02em}.k-pill .u{font-family:var(--k-han);font-size:.62em;margin-left:.05em}
+.k-pill.red{background:linear-gradient(180deg,#d4534f,#8f2326)}
+.k-pill.gold{background:linear-gradient(180deg,#d8b45a,#8d6a22)}
+.k-pill.dark{background:linear-gradient(180deg,#2a2d34,#121318);border-color:#c9a95a;color:#f3e6b8}
+
+/* ---------- 卡片：平的品牌色块（不发光、不加高光装饰），中文标题 + 一行极小的英文 ---------- */
+.k-card{position:absolute;transform:translate(-50%,-50%);border-radius:10px;overflow:hidden;
+ background:linear-gradient(180deg,var(--hi) 0%,var(--c) 100%);
+ box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.2),0 14px 32px rgba(0,0,0,.5);
+ display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.k-card>.bi{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.5;mix-blend-mode:luminosity}
+.k-card .tt{position:relative;font-family:var(--k-han);color:#f7f2df;letter-spacing:.14em;line-height:1.08;text-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap}
+.k-card .en{position:relative;font:600 13px var(--k-en);letter-spacing:.2em;color:rgba(255,255,255,.6);margin-top:9px;text-transform:uppercase;white-space:nowrap}
+.k-card .fl{position:relative;height:34px;margin-top:10px;border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.k-card .vl{position:relative;font-family:var(--k-num);color:#fff3c4;line-height:1;margin-top:6px;white-space:nowrap}
+.k-card .vl .c{font-size:.8em;margin-right:.02em}.k-card .vl .u{font-family:var(--k-han);font-size:.6em;margin-left:.05em}
+.k-card.gray>*{opacity:.25}
+
+/* 勾和叉：状态变化，不是装饰 */
+.k-mark{position:absolute;transform:translate(-50%,-50%);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(0,0,0,.55),inset 0 0 0 2px rgba(255,255,255,.4)}
+.k-mark.ok{background:radial-gradient(circle at 35% 30%,#58cf86,#1d7a43)}
+.k-mark.no{background:radial-gradient(circle at 35% 30%,#f26a6a,#a31d22)}
+.k-mark svg{width:58%;height:58%}
+
+/* 一个短的中文标签（说明这个框、这个盘是什么；一镜最多一个） */
+.k-label{position:absolute;transform:translate(-50%,-50%);font-family:var(--k-han);color:var(--k-cream);letter-spacing:.12em;white-space:nowrap;text-shadow:0 2px 10px rgba(0,0,0,.75)}
+.k-label i{display:block;font:600 .36em var(--k-en);letter-spacing:.24em;color:rgba(255,255,255,.5);font-style:normal;margin-top:.5em;text-transform:uppercase;text-align:center}
+
+/* 白边画框：两样东西并列时实拍装进画框 */
+.k-frame{position:absolute;border:6px solid var(--k-paper);border-radius:12px;overflow:hidden;background:#111;box-shadow:0 30px 80px rgba(0,0,0,.8),0 0 0 1px rgba(0,0,0,.4)}
+.k-frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+
+/* 白底图表卡 */
+.k-chart{position:absolute;background:linear-gradient(180deg,#fbfaf6,#f1efe8);border-radius:20px;box-shadow:0 40px 100px rgba(0,0,0,.65),inset 0 0 0 1px rgba(0,0,0,.06);overflow:hidden}
+.k-chart .ct{position:absolute;left:56px;top:40px;font-family:var(--k-han);font-size:40px;color:#23252b;letter-spacing:.08em;white-space:nowrap}
+.k-chart .cs{position:absolute;left:58px;top:96px;font:600 15px var(--k-en);letter-spacing:.2em;color:#8b8f97;text-transform:uppercase;white-space:nowrap}
+
+/* 新闻原文页（自己排的通用样式，不仿任何真实网站） */
+.k-page{position:absolute;background:#fdfdfb;box-shadow:0 40px 110px rgba(0,0,0,.7);overflow:hidden;color:#1d1f23}
+.k-page .src{display:inline-block;font:700 22px var(--k-ui);color:#fff;background:#b8282f;padding:6px 14px;border-radius:4px;letter-spacing:.06em}
+.k-page .dt{display:inline-block;margin-left:18px;font:500 22px var(--k-ui);color:#7c8088}
+.k-page h1{font:700 56px/1.28 var(--k-ui);margin:26px 0 22px;letter-spacing:.01em}
+.k-page p{font:500 30px/1.75 var(--k-ui);color:#3a3d44;margin:0 0 18px}
+.k-page .mk{position:relative;white-space:nowrap}
+.k-page .mk>u{position:absolute;left:-4px;right:-4px;top:12%;bottom:6%;background:#ffd84a;mix-blend-mode:multiply;transform-origin:0 50%;text-decoration:none}
+
+/* 人站在巨字前面：身后同色的一团光 */
+.k-halo{position:absolute;border-radius:50%;mix-blend-mode:screen;pointer-events:none}
+
+/* 时间线 */
+.k-year{position:absolute;transform:translate(-50%,0);font-family:var(--k-num);color:#f3ead0;letter-spacing:.02em;white-space:nowrap;text-shadow:0 4px 14px rgba(0,0,0,.6)}
+
+/* 开头关键词快闪 */
+.k-snip{position:absolute;inset:0;background:#f6f5f1;color:#202226;overflow:hidden}
+.k-snip .cat{position:absolute;font:600 30px var(--k-ui);color:#7a7f88;white-space:nowrap}
+.k-snip .ttl{position:absolute;top:470px;font:700 130px/1 var(--k-ui);white-space:nowrap;letter-spacing:-.01em}
+.k-snip .kw{color:#d7262e}
+.k-snip .sum{position:absolute;font:500 34px/1.6 var(--k-ui);color:#8a8e96;white-space:nowrap}
+
+/* 小卡（人旁边、大数旁边冒出来的那张）：深色半透明 + 细亮边 */
+.k-glass{position:absolute;padding:22px 34px 18px;border-radius:14px;background:linear-gradient(160deg,rgba(40,48,64,.72),rgba(14,18,26,.72));border:1.5px solid rgba(255,255,255,.3);box-shadow:0 20px 50px rgba(0,0,0,.5);white-space:nowrap}
+.k-glass b{display:block;font-family:var(--k-han);font-weight:normal;color:#f4efdc;letter-spacing:.1em}
+.k-glass .v{font-family:var(--k-num);color:#fff6cf;line-height:.95;margin-top:6px}
+.k-glass .v .c{font-size:.82em;margin-right:.02em}.k-glass .v .u{font-family:var(--k-han);font-size:.6em;margin-left:.06em;color:var(--k-unit)}
+
+/* 金属片名：上面眉题，下面一行英文 */
+.k-title{position:absolute;left:50%;top:47%;text-align:center;white-space:nowrap;z-index:30}
+.k-title b{display:block;font-family:var(--k-han);font-weight:normal;letter-spacing:.08em;line-height:1.1;background:linear-gradient(180deg,#ffffff 0%,#e6e9ee 38%,#9aa1ab 50%,#f1f3f5 64%,#c4c9d0 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 6px 18px rgba(0,0,0,.7))}
+.k-title small{display:block;font:.26em var(--k-han);letter-spacing:.3em;color:var(--k-cream);margin-bottom:.35em;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+.k-title i{display:block;font:600 22px var(--k-en);letter-spacing:12px;color:rgba(255,255,255,.48);font-style:normal;margin-top:.7em;text-transform:uppercase}
+
+/* 章节卡：阶段一 · 标题 · 年份 */
+.k-chap{position:absolute;left:50%;top:47%;text-align:center;white-space:nowrap;z-index:30}
+.k-chap small{display:block;font:40px var(--k-han);letter-spacing:.4em;color:#e9d9a6;margin-bottom:22px}
+.k-chap b{display:block;font:150px var(--k-han);font-weight:normal;letter-spacing:.08em;color:#fff;text-shadow:0 8px 30px rgba(0,0,0,.8)}
+.k-chap span{display:block;font:90px var(--k-num);color:#e9d9a6;margin-top:14px;letter-spacing:.06em}
+.k-chap i{display:block;font:600 20px var(--k-en);letter-spacing:10px;color:rgba(255,255,255,.5);font-style:normal;margin-top:18px;text-transform:uppercase}

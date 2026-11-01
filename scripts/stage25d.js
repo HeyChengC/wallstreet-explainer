@@ -32,13 +32,13 @@ const desk3d=(cam,content,o={})=>`<div style="position:absolute;inset:0;perspect
 // 方向运动模糊：按这一层这一帧在屏幕上挪了多少像素挑一档
 const MBK=[3,6,10,16,24,36];
 const DEFS=`<svg width="0" height="0" style="position:absolute">${MBK.map(k=>`<filter id="mh${k}" x="-30%" y="-5%" width="160%" height="110%"><feGaussianBlur stdDeviation="${k} 0"/></filter><filter id="mv${k}" x="-5%" y="-30%" width="110%" height="160%"><feGaussianBlur stdDeviation="0 ${k}"/></filter>`).join('')}</svg>`;
-const mbF=(vx,vy)=>{const a=Math.abs(vx),b=Math.abs(vy),m=Math.max(a,b)*.5;if(m<2)return '';const k=MBK.reduce((p,q)=>Math.abs(q-m)<Math.abs(p-m)?q:p);return `url(#${a>=b?'mh':'mv'}${k}) `;};
+const mbF=(vx,vy,mx=99)=>{const a=Math.abs(vx),b=Math.abs(vy),m=Math.min(mx,Math.max(a,b)*.5);if(m<2)return '';const k=MBK.reduce((p,q)=>Math.abs(q-m)<Math.abs(p-m)?q:p);return `url(#${a>=b?'mh':'mv'}${k}) `;};
 
 // 一层：c 当前机位，cp 上一帧机位（null = 不算模糊），z 深度（<1 远、动得少；>1 近、动得多）
-// o.blur 景深虚化 px，o.br 亮度，o.o 透明度，o.mb=false 不加运动模糊，o.zi 叠放顺序
+// o.blur 景深虚化 px，o.br 亮度，o.o 透明度，o.mb=false 不加运动模糊，o.mbMax 方向模糊最多几 px（点阵地图这类细碎的画面糊多了会拉成横纹），o.zi 叠放顺序
 function L(c,cp,z,html,o={}){
  const s=1+(c.s-1)*z,ox=(c.x-960)*z,oy=(c.y-540)*z;let f='',blur=o.blur??0;
- if(cp&&o.mb!==false){const sp=1+(cp.s-1)*z;f=mbF(((cp.x-960)*z-ox)*s,((cp.y-540)*z-oy)*s);const ds=Math.abs(s-sp)*900;if(ds>2)blur+=(ds-2)*.3;}   // 推拉很快时整体略虚（系数大了会糊成一片）
+ if(cp&&o.mb!==false){const sp=1+(cp.s-1)*z;f=mbF(((cp.x-960)*z-ox)*s,((cp.y-540)*z-oy)*s,o.mbMax);const ds=Math.abs(s-sp)*900;if(ds>2)blur+=Math.min(o.zbMax??4,(ds-2)*.3);}   // 推拉很快时整体略虚（最多 4px，多了糊成一片）
  if(blur>.3)f+=`blur(${blur.toFixed(1)}px) `;
  if(o.br!=null&&Math.abs(o.br-1)>.005)f+=`brightness(${o.br.toFixed(3)}) `;
  return `<div style="position:absolute;inset:0;transform:scale(${s.toFixed(4)}) translate(${(-ox).toFixed(1)}px,${(-oy).toFixed(1)}px);${f?`filter:${f};`:''}${o.o!=null?`opacity:${C(o.o).toFixed(3)};`:''}z-index:${o.zi??Math.round(10+z*10)}">${html}</div>`;
