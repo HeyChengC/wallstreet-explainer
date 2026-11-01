@@ -1,10 +1,10 @@
 // 没有配音时先估一个时间线：script.json → timeline.json（和 temp_voice.py 同一个格式），画面先挂在估出来的字上。
 // 配好音以后跑 temp_voice.py 覆盖它就行：镜头表里写的是 '@句id:词'，不写秒数，所以不用改。
 //   node scripts/timeline_stub.mjs <片子目录>/script.json
-// 估法：中文每字约 0.235 秒（edge-tts 云希原速），数字 0.17，英文字母 0.075，逗号停 0.2，句号停 0.28；句间按 gap。
+// 估法：中文每字约 0.235 秒（edge-tts 云希原速，"二〇一九"的〇也算汉字），数字 0.17，英文字母 0.075，逗号停 0.2，句号停 0.28；句间按 gap。
 import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} from 'node:url';
 
-const per = ch => /[㐀-鿿]/.test(ch) ? .235 : /[0-9]/.test(ch) ? .17 : /[A-Za-z]/.test(ch) ? .075
+const per = ch => /[㐀-鿿〇]/.test(ch) ? .235 : /[0-9]/.test(ch) ? .17 : /[A-Za-z]/.test(ch) ? .075
   : /[，、：；,:;]/.test(ch) ? .2 : /[。！？!?…]/.test(ch) ? .28 : /\s/.test(ch) ? .06 : .1;
 
 export function stub(S) {

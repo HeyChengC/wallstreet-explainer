@@ -47,10 +47,16 @@ for (const d of ['assets/img', 'assets/clips', 'assets/cut', 'voice', 'out']) fs
 fs.writeFileSync(path.join(D, 'assets/clips/counts.json'), '{}');
 const tl = stub(JSON.parse(fs.readFileSync(path.join(D, 'script.json'), 'utf8')));
 fs.writeFileSync(path.join(D, 'timeline.json'), JSON.stringify(tl, null, 1));
-const R = path.join(SK, 'scripts/render.mjs');
+const R = path.join(SK, 'scripts/render.mjs'), TS = path.join(SK, 'scripts/timeline_stub.mjs');
 console.log(`建好了：${D}（估出来的时间线 ${tl.duration} 秒，还没有配音）`);
 console.log('下一步：');
-console.log(`  1. node "${R}" --dir "${D}" --check            查镜头表（几秒钟，不渲染）`);
-console.log(`  2. node "${R}" --dir "${D}" --sheet            每镜三帧拼一张图（out/sheet.png），自己先看一遍`);
-console.log(`  3. node "${R}" --dir "${D}" --video --h 720    渲 720p 预览（没声音）`);
-console.log(DEMO ? '  示例片的写法在 film.js，每个场景的参数见 kit/README.md' : '  写 script.json（文案）→ 按导演表在 film.js 里一镜一镜填镜头表（kit/README.md 查场景）');
+const steps = DEMO ? [] : [
+  `写 script.json（文案，一句一个 id，写法见 kit/README.md「文案 script.json」）`,
+  `node "${TS}" "${path.join(D, 'script.json')}"    重算时间线（每改一次 script.json 就重跑一次）`,
+  `写 film.js（每镜先想 says，再从 kit/README.md 的表里选场景）`];
+steps.push(`node "${R}" --dir "${D}" --check            查镜头表（几秒钟，不渲染），改到零错误`,
+  `node "${R}" --dir "${D}" --sheet            每镜三帧拼一张图（out/sheet.png），自己先看一遍`,
+  `node "${R}" --dir "${D}" --video --h 720    渲 720p 预览（没声音）`);
+steps.forEach((s, i) => console.log(`  ${i + 1}. ${s}`));
+if (DEMO) console.log('  示例片的写法在 film.js，每个场景的参数见 kit/README.md');
+console.log(`注意：fonts\\ 是指向字体目录的联接。删这个片子目录前先拆联接（只删联接，不删字体）：node -e "require('fs').rmdirSync(process.argv[1])" "${path.join(D, 'fonts')}"，再删目录。`);

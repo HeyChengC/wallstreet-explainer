@@ -13,6 +13,7 @@
 import fs from 'node:fs/promises'; import path from 'node:path'; import http from 'node:http';
 import {spawn} from 'node:child_process'; import {once} from 'node:events';
 import {createRequire} from 'node:module'; import fsSync from 'node:fs'; import {fileURLToPath} from 'node:url';
+import {stub} from './timeline_stub.mjs';
 
 const arg = k => { const i = process.argv.indexOf(k); return i >= 0 ? process.argv[i + 1] : null; };
 const has = k => process.argv.includes(k);
@@ -31,6 +32,25 @@ const here = path.resolve(arg('--dir') ?? '.'), PAGE = arg('--page') ?? 'index.h
 const H = Number(arg('--h') ?? 720), Wd = Math.round(H * 16 / 9), out = arg('--out') ? path.resolve(arg('--out')) : path.join(here, 'out');
 await fs.mkdir(out, {recursive: true});
 const T = JSON.parse(await fs.readFile(path.join(here, 'timeline.json'), 'utf8'));
+// 文案和时间线对不对得上：script.json 改过、timeline.json 没重算时，后面报的"句子里找不到某个词"全是误导（报的是旧句子），先在这里拦住
+const TS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'timeline_stub.mjs');
+function staleTimeline() {
+  const sp = path.join(here, 'script.json'); if (!fsSync.existsSync(sp)) return null;
+  let S; try { S = JSON.parse(fsSync.readFileSync(sp, 'utf8')); } catch (e) { return {err: true, msg: `script.json 不是合法的 JSON（${e.message}）：逗号、引号、括号对一下`}; }
+  if (T.stub) {
+    let E; try { E = stub(S); } catch (e) { return {err: true, msg: e.message}; }
+    const sig = t => JSON.stringify([t.pre, t.title, t.beats.map(b => [b.id, b.text, b.start, b.end]), (t.inserts ?? []).map(i => [i.id, i.start, i.end])]);
+    if (sig(E) !== sig(T)) return {err: true, msg: `script.json 改过了，timeline.json 还是按旧文案估的：先重跑 node "${TS}" "${sp}"，再查（每改一次 script.json 都要重跑）`};
+  } else {
+    const a = (S.lines ?? []).map(l => `${l.id}|${l.text}|${l.bite ? 1 : 0}`).join('\n') + `|${S.title?.after ?? ''}`;
+    const b = T.beats.map(x => `${x.id}|${x.text}|${(T.inserts ?? []).some(i => i.after === x.id) ? 1 : 0}`).join('\n') + `|${T.title ? (S.title?.after ?? '') : ''}`;
+    if (a !== b) return {err: false, msg: 'script.json 的文案（句子、原声插段、片名位置）和配音出的时间线（timeline.json）对不上：改了文案就要重新配音、重出时间线（temp_voice.py，或豆包配音后再对齐）'};
+  }
+  return null;
+}
+const STALE = arg('--worker') ? null : staleTimeline();
+if (STALE) console.log((STALE.err ? '时间线要先重算：' : '注意：') + STALE.msg);
+if (STALE?.err && has('--check')) process.exit(2);
 const mime = {'.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.json': 'application/json',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.TTF': 'font/ttf', '.otf': 'font/otf', '.woff2': 'font/woff2'};
 const worker = arg('--worker');
@@ -51,7 +71,13 @@ async function page() {
   p.on('requestfailed', q => errs.push('请求失败 ' + q.url())); p.on('response', s => { if (s.status() >= 400) errs.push(s.status() + ' ' + s.url()); });
   await p.goto(`http://127.0.0.1:${port}/${PAGE}`);
   try { await p.evaluate(() => window.ready); }
-  catch (e) { console.error('页面没准备好：\n' + e.message.split('\n').filter(l => !/^\s+at /.test(l)).slice(0, 14).join('\n'), [...new Set(errs)].slice(0, 8)); await b.close(); process.exit(3); }
+  catch (e) {
+    // Playwright 包的那层（page.evaluate: Error: ……）和代码位置不给人看，只留我们自己写的那句话
+    const msg = e.message.replace(/^page\.evaluate:\s*/, '').replace(/^(Uncaught\s+)?(Type|Reference|Syntax|Range)?Error:\s*/, '').split('\n').filter(l => !/^\s+at /.test(l)).slice(0, 30).join('\n');
+    const more = [...new Set(errs)].map(m => m.replace(/^(Uncaught\s+)?Error:\s*/, '')).filter(m => !msg.includes(m.split('\n')[0]));
+    console.error('页面没跑起来，先改这里：\n' + msg + (more.length ? '\n另外页面还报了：\n- ' + more.slice(0, 8).join('\n- ') : ''));
+    await b.close(); process.exit(3);
+  }
   return {b, p, errs, warns};
 }
 if (arg('--stills')) {

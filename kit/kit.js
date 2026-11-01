@@ -84,12 +84,12 @@ function timer(T){
   if(om&&om[1]&&!om[1].endsWith(':')){off=+om[2];s=om[1];}   // '@b03:-2780' 里的 -2780 是词，不是偏移
   let nth=1;const hm=s.match(/#(\d+)$/);if(hm){nth=+hm[1];s=s.slice(0,-hm[0].length);}
   const i=s.indexOf(':'),id=i<0?s:s.slice(0,i),w=i<0?null:s.slice(i+1);
-  if(id==='title'){if(!T.title)throw Error(`时间线里没有片名位置（script.json 的 title），用不了 ${v}`);return (w==='END'?T.title.end:T.title.start)+off;}
+  if(id==='title'){if(!T.title)throw Error(`timeline.json 里没有片名的位置，用不了 ${v}：script.json 里加 "title":{"after":"片名前那句的 id","len":片名停几秒}，再重跑 timeline_stub.mjs`);return (w==='END'?T.title.end:T.title.start)+off;}
   if(INS[id])return (w==='END'?INS[id].end:INS[id].start)+off;
-  const b=BT[id];if(!b)throw Error(`时间线里没有句子 ${id}（${v}）。有的句子：${Object.keys(BT).join(' ')}`);
+  const b=BT[id];if(!b)throw Error(`timeline.json 里没有句子 ${id}（${v}）。有的句子：${Object.keys(BT).join(' ')}${/^bite_/.test(id)?'（原声插段写在 script.json 那一句的 bite 里，再重跑 timeline_stub.mjs）':''}`);
   if(w==null||w==='')return b.start+off;if(w==='END')return b.end+off;
   let k=-1;for(let n=0;n<nth;n++){k=b.text.indexOf(w,k+1);if(k<0)break;}
-  if(k<0)throw Error(`句子 ${id} 里找不到「${w}」${nth>1?`第 ${nth} 次`:''}（${v}）。原句：${b.text}`);
+  if(k<0)throw Error(`句子 ${id} 里找不到「${w}」${nth>1?`第 ${nth} 次`:''}（${v}）。timeline.json 里这句是：${b.text}。词要照这句一字不差地抄（念法：'一百三十亿' 不是 '130亿'，'〇' 不是 '零'）`);
   return b.chars[k][1]+off;
  };
 }
@@ -286,10 +286,53 @@ async function use(F){
   else if(Array.isArray(v))v.forEach((x,i)=>checkTimes(x,`${path}[${i}]`,errs));
   else if(v&&typeof v==='object')for(const k in v)checkTimes(v[k],`${path}.${k}`,errs);
  }
+ // ---------- 参数名查一遍：写错的参数（lable、untill）模板不认识，会被静默丢掉，看不了图的模型根本发现不了 ----------
+ // 每个场景只认自己的参数：help、defaults、need 里写了的，加上模板代码里读到的 p.xxx（board 家族的代码在 def.code 里）。
+ // 嵌套在 items / nodes / steps 里的字段名，对照模板代码里出现过的所有名字。note 随便写备注，'_' 开头的不查，custom 不查。
+ const FREE=['scene','until','says','enter','tone','glow','dust','throughAt','throughScale','note'];
+ let VOCAB;
+ async function vocab(){
+  if(VOCAB!==undefined)return VOCAB;
+  const urls=[...document.scripts].map(s=>s.src).filter(s=>/\/(stage25d|film_base|moves|kit|scenes)\.js(\?.*)?$/.test(s));
+  try{const set=new Set();for(const u of urls){const t=await (await fetch(u)).text();for(const m of t.matchAll(/[A-Za-z_$][\w$]*/g))set.add(m[0]);}VOCAB=urls.length>=2&&set.size>500?set:null;}
+  catch{VOCAB=null;}   // 双击直接打开（file://）读不到源码：这一项不查
+  return VOCAB;
+ }
+ const knownOf=def=>def._known??=new Set([...FREE,...Object.keys(def.help??{}),...Object.keys(def.defaults??{}),...(def.need??[]),
+  ...[def.make,def.prep,def.check,def.beats,def.flat,...A(def.code)].filter(f=>typeof f==='function').flatMap(f=>[...String(f).matchAll(/\bp\.([A-Za-z_$][\w$]*)/g)].map(m=>m[1]))]);
+ const osa=(a,b)=>{const d=[];for(let i=0;i<=a.length;i++){d[i]=[i];for(let j=1;j<=b.length;j++)d[i][j]=i?Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1),i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1]?d[i-2][j-2]+1:1e9):j;}return d[a.length][b.length];};
+ const guess=(k,cands)=>{let best=null,bd=1e9;for(const c of cands){if(c===k||c.length<2)continue;const d=osa(k.toLowerCase(),c.toLowerCase())+(c[0]===k[0]?0:.5);if(d<bd){bd=d;best=c;}}return bd<=(k.length<=4?1:2)?best:null;};
+ async function checkKeys(list){
+  const V=await vocab(),errs=[],warns=[];if(!V)return {errs,warns};
+  const fields=[...V].filter(x=>/^[a-z][A-Za-z]*$/.test(x));
+  // mark:{c1:'ok'} 这种按节点 id 当键的：键是 id（或者 'a>b' 这种连线名），不是字段名，不查
+  const idsOf=(v,s=new Set())=>{if(Array.isArray(v))v.forEach(x=>idsOf(x,s));else if(v&&typeof v==='object'){if(typeof v.id==='string')s.add(v.id);for(const k in v)idsOf(v[k],s);}return s;};
+  let ids=new Set();
+  const walk=(v,path)=>{
+   if(Array.isArray(v))v.forEach((x,i)=>walk(x,`${path}[${i}]`));
+   else if(v&&typeof v==='object'&&Object.getPrototypeOf(v)===Object.prototype)for(const k in v){if(k[0]==='_')continue;
+    if(!V.has(k)&&!ids.has(k)&&/^[A-Za-z_$][\w$]*$/.test(k)){const g=guess(k,fields);errs.push(`${path}.${k}：模板里没有 ${k} 这个字段，写了会被丢掉${g?`，是不是 ${g}？`:''}`);}
+    walk(v[k],`${path}.${k}`);}
+  };
+  list.forEach((sp,i)=>{
+   const def=SCENES[sp?.scene];if(!def||sp.scene==='custom')return;
+   ids=idsOf(sp);
+   const known=knownOf(def),tag=`第 ${i+1} 镜（${sp.scene}）`,can=()=>[...known].filter(x=>!FREE.includes(x)&&def.help?.[x]!=null).join('、');
+   for(const k in sp){if(k[0]==='_')continue;
+    if(!known.has(k)){const g=guess(k,known);
+     if(!V.has(k)||g)errs.push(`${tag}：不认识参数 ${k}${g?`，是不是 ${g}？`:''}（${sp.scene} 能写的：${can()}；通用的：until、says、enter、tone、note）`);
+     else warns.push(`${tag}：${sp.scene} 不读参数 ${k}，写了也不会画出来（${sp.scene} 能写的：${can()}）`);}
+    else walk(sp[k],`${tag}.${k}`);}
+  });
+  return {errs,warns};
+ }
  K.film=async list=>{
   if(!Array.isArray(list)||!list.length)throw Error('K.film([...]) 要一张镜头表（数组，每一镜一个对象）');
   const errs=[];list.forEach((sp,i)=>checkTimes(sp,`第 ${i+1} 镜`,errs));
-  if(errs.length)throw Error('时刻写错了：\n'+errs.join('\n'));
+  const ck=await checkKeys(list);
+  if(ck.errs.length)errs.push(...ck.errs);
+  if(errs.length)throw Error(`镜头表有 ${errs.length} 处写错了：\n`+errs.join('\n'));
+  ck.warns.forEach(warn);
   await Promise.all([...scanImgs(list)].map(loadImg));
   let t0=0;const out=[];
   for(let i=0;i<list.length;i++){
@@ -337,7 +380,7 @@ async function use(F){
    if(d>6.5&&beats<1)warn(`${tag}有 ${d.toFixed(1)} 秒，中间没有新的落点（steps）：观众会走神，拆成两镜，或者加一两个 step`);
    if(i>=2&&out[i-1].scene===s.scene&&out[i-2].scene===s.scene)warn(`第 ${i-1}–${i+1} 镜连着三个 ${s.scene}：同一种画面连着出现，观众会腻；能合成一个场景的多个 steps 就合`);
    if(i>=1&&s.enter!=='cut'&&s.enter===out[i-1].enter)warn(`第 ${i}、${i+1} 镜连着用 enter:'${s.enter}'：同一种接法连用，观众会看出套路`);
-   if(s.enter.startsWith('push')&&s.scene!=='person')warn(`${tag}用了 push（横推换人）：横推说的是"换一个人/一件并列的事来说"，这一镜是吗？`);
+   if(s.enter.startsWith('push')&&s.scene!=='person')warn(`${tag}用了 push（横推）：横推是"换一个并列的主角来说"（人换人最典型，两镜都是 person 最稳；公司换公司、并列的两件事也算）。这一镜是换主角吗？是就留着，不是就改 cut 或 blur`);
    const ph=[...scanImgs(s.p)].filter(x=>x.includes('assets/kit/ph/'));if(ph.length)warn(`${tag}还在用 ${ph.length} 个占位素材（assets/kit/ph/）：成片之前换成真素材`);
   });
   const rolls=out.filter(s=>s.p.roll||s.p.total||(s.p.steps??[]).some(x=>x.roll)).length;
@@ -348,10 +391,11 @@ async function use(F){
   const b0=F.T.beats?.[0];
   if(b0&&b0.start>.5)warn(`第一句 ${b0.start.toFixed(2)} 秒才开口：0.5 秒内就要开口（script.json 的 pre 不超过 0.35）`);
   else if((F.T.pre??0)>.35)warn(`script.json 的 pre 是 ${F.T.pre}：开头留白不超过 0.35 秒`);
-  // 真素材要够：原版一半左右的画面是实拍、新闻原文、当事人
-  const real=s=>['footage','montage','frames','popup','person','desk','device'].includes(s.scene)||(s.scene==='article'&&s.p.img)||(['title','statement'].includes(s.scene)&&A(s.p.items).length)||(s.scene==='profile'&&(s.p.img||s.p.photo))||(s.scene==='quote'&&s.p.who?.photo);
+  // 真素材要够：原版一半左右的画面是实拍、新闻原文、当事人。只用了占位图（assets/kit/ph/）的镜头不算
+  const onlyPh=s=>{const im=[...scanImgs(s.p)];return im.length>0&&im.every(x=>x.includes('assets/kit/ph/'));};
+  const real=s=>!onlyPh(s)&&(['footage','montage','frames','popup','person','desk','device'].includes(s.scene)||(s.scene==='article'&&s.p.img)||(['title','statement'].includes(s.scene)&&A(s.p.items).length)||(s.scene==='profile'&&(s.p.img||s.p.photo))||(s.scene==='quote'&&s.p.who?.photo));
   const nr=out.filter(real).length;
-  if(out.length>=5&&nr<out.length*.4)warn(`真素材的镜头只有 ${nr}/${out.length}（footage、person、desk、article 截图、montage、frames……）：少于四成就会"全是图形"，原版一半左右是实拍、原文和当事人`);
+  if(out.length>=5&&nr<out.length*.4)warn(`真素材的镜头只有 ${nr}/${out.length}（footage、person、desk、article 截图、montage、frames……；只用了占位图的不算）：少于四成就会"全是图形"，原版一半左右是实拍、原文和当事人`);
   // 同一家公司全片同一个颜色
   const seen={},note=(name,color,i)=>{if(!name||!color)return;const k=String(name).trim(),cc=col(color);((seen[k]??={})[cc]??=[]).push(i+1);};
   out.forEach((s,i)=>{const p=s.p;for(const n of [...A(p.nodes),...A(p.items),...A(p.cards)])if(n&&typeof n==='object')note(n.name??n.title,n.color,i);

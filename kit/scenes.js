@@ -23,7 +23,7 @@ const glass=(x,y,lab,val,st,o={})=>`<div class="k-glass" style="left:${f1(x)}px;
 K.scene('number',{
  says:'一个决定性的数（金额、估值、市值）放大成画面主角，带上单位和"这是什么"',
  use:'这句话的落点就是一个数；"加起来/累计"时配 roll 滚上去；说到一个小得多的数可以用 sub 在旁边冒一张小卡对比',
- avoid:'一句话里要比两三个数（用 bars 或 discs 的 scale:area）；数后面马上要拆它的构成（用 board）',
+ avoid:'一句话里要比两三个数（用 bars 或 discs 的 scale:area）；数后面马上要拆成谁给谁、钱怎么流（用 network / board）。拆成两三样有画面的东西（现金 / 算力）不算，接 frames，用 pin 钉住这个数',
  need:['value'],
  help:{value:"'$7250亿'、'5.2万亿'、'-2780亿'、'30%'",brow:"眉题：这个数是什么，'四家 · 2026 AI 资本开支'",en:'眉题下面一行英文小字（可省）',
   full:'true = 写满位数 $725,000,000,000（滚数时默认满位）',roll:"{from:'$1800亿', at:'@b03:加起来', stop:'@b03:七千'}：从第一笔滚到这个数，话说到那个数时正好停",
@@ -191,7 +191,7 @@ function boardMake(p,c){
   return c.bg(t,cc,cp,{tone:p.tone,glow:p.glow,rings:p.rings})+L(cc,cp,1,h,{mbMax:p.mbMax})+top;
  };
 }
-const boardDoc={need:['nodes'],minDur:1.5,beats:p=>arr(p.steps).length+(p.nodes??p.items??[]).filter(n=>n.at!=null).length,
+const boardDoc={need:['nodes'],minDur:1.5,code:[boardMake],beats:p=>arr(p.steps).length+(p.nodes??p.items??[]).filter(n=>n.at!=null).length,
  help:{nodes:"[{id:'nvda', name:'英伟达', color:'nvidia', photo:'assets/img/jensen.jpg', tag:{label:'市值', value:'$5.2万亿'}, at:'@b06:英伟达'}, ...]：圆盘有 photo 就是照片圆盘（照片铺满、名字压在盘上），没有就是品牌色实心盘 + 名字",
   links:"[{from:'nvda', to:'oai', text:'投资', color:'green'}]",steps:"[{at:'@b07:转了一圈', loop:['nvda>oai','oai>orcl','orcl>nvda']}, {at:'@b08', focus:'nvda'}]",
   layout:"'row' 一排 / 'ring' 一圈 / 'hub' 中心加一圈 / 'grid'（节点写 pos:[列,行]）/ 'free'（节点写 x,y）/ 'line' 时间线",
@@ -348,7 +348,7 @@ K.scene('chart',{
  use:'按时间变化的一串数；"到 2030 年累计亏 2780 亿"这种按年累加',
  avoid:'只有一个数（number）；两三个数比大小（bars 更有冲击力）',
  need:['values'],
- help:{values:'[-50,-90,-140,...]：每个点的值（单位自己定，和 unit 一致）',x:"['2026','2027',...]：横轴标签，和 values 一样多",title:"图表标题：'OpenAI 累计净烧钱（预测）'",sub:'标题下一行英文小字',
+ help:{values:'[-50,-90,-140,...]：每个点的值（单位自己定，和 unit 一致）',x:"['2026','2027',...]：横轴标签，和 values 一样多",title:"图表标题：'OpenAI 累计净烧钱（预测）'",en:'标题下一行英文小字（以前叫 sub，还能用；number 的 sub 是另一回事：对比小卡）',
   kind:"'line'（默认）/'area' 线下面铺一层 / 'bar' 柱",color:"线的颜色：'red'（亏损，默认）/'green'/公司名",unit:"纵轴单位：'亿'",draw:"{at:'@b08:它还准备', until:'@b08:两千七百'}：线从第一个点画到最后一个点的时间",
   total:"{label:'累计净烧', from:'$0', to:'-$2780亿'}：跟着线滚的累计数，放在线让出来的那块空白里",mark:"[{at:'@b09:2030', i:4, text:'2030'}]：在第 i 个点上亮一下"},
  defaults:{kind:'area',color:'red'},minDur:1.8,flat:true,
@@ -378,7 +378,7 @@ K.scene('chart',{
    let tt='';if(tot&&t>=d0-.05){const val=lerp(tot.a.n*(tot.a.neg?-1:1),tot.b.n*(tot.b.neg?-1:1),k),pv={...tot.b,neg:val<0,n:Math.abs(val)};
     tt=`<div style="position:absolute;${desc?`right:${pr+10}px`:`left:${pl+30}px`};top:${pt-6}px;text-align:${desc?'right':'left'}"><div style="font:32px ${FAM.han};color:#4a4d55;letter-spacing:.08em">${tot.l??''}</div><div class="k-num ${val<0||p.color==='red'?'red':''}" style="position:relative;font-size:118px;margin-top:6px;filter:none;justify-content:${desc?'flex-end':'flex-start'}">${K.numHTML(pv,{fixed:true})}</div></div>`;}
    const su=c.enter==='flat'?E((t-c.t0-.3)/.55):1;   // 接 flat：上一镜倒成桌面，图表从桌面上立起来
-   const card=`<div class="k-chart" style="left:${cx}px;top:${cy}px;width:${cw}px;height:${ch}px;transform-origin:50% 100%;transform:translateY(${f1((1-su)*420)}px) perspective(2400px) rotateX(${f1((1-su)*26)}deg) rotateY(-2deg);opacity:${f3(C(su*2.2))}">${p.title?`<div class="ct">${p.title}</div>`:''}${p.sub?`<div class="cs">${p.sub}</div>`:''}<svg width="${cw}" height="${ch}" style="position:absolute;left:0;top:0"><defs><linearGradient id="ka" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${lc}" stop-opacity="${desc?.06:.32}"/><stop offset="1" stop-color="${lc}" stop-opacity="${desc?.32:.04}"/></linearGradient></defs>${grid}${svg}</svg>${tt}</div>`;
+   const card=`<div class="k-chart" style="left:${cx}px;top:${cy}px;width:${cw}px;height:${ch}px;transform-origin:50% 100%;transform:translateY(${f1((1-su)*420)}px) perspective(2400px) rotateX(${f1((1-su)*26)}deg) rotateY(-2deg);opacity:${f3(C(su*2.2))}">${p.title?`<div class="ct">${p.title}</div>`:''}${(p.en??p.sub)?`<div class="cs">${p.en??p.sub}</div>`:''}<svg width="${cw}" height="${ch}" style="position:absolute;left:0;top:0"><defs><linearGradient id="ka" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${lc}" stop-opacity="${desc?.06:.32}"/><stop offset="1" stop-color="${lc}" stop-opacity="${desc?.32:.04}"/></linearGradient></defs>${grid}${svg}</svg>${tt}</div>`;
    return c.bg(t,cc,cp,{tone:p.tone,glow:p.glow})+L(cc,cp,1,card);
   };
  }
