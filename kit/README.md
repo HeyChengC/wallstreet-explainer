@@ -73,6 +73,29 @@
 
 对不上就别硬塞：换一个更对得上的，或者用 `custom` 手写（手写也要写 `says`）。
 
+## 真人口播层（`host.js`）和新场景（`scenes_plus.js`）
+
+为什么这么设计、什么时候用哪种：`references/presenter.md`。片子的 t 就是口播的 t（`scripts/host_timeline.py` 对齐），口播帧在 `assets/clips/host/`，抠像在 `assets/cut/host/`。`film.js` 里在 `KIT.use` 之后加一行 `await KIT_HOST.use(K,{faceY:330})`（她脸的中心在原片里的 y，圆窗、竖窗按它裁）。
+
+| 她在哪 | 写法 | 例子（《打仗黄金反而跌》） |
+|---|---|---|
+| 房间全屏，景别跳 | `{scene:'host', zoom:[{at, s, x}]}`：`s` 放大（≤1.35，720p 原片 ≤1.2），`x` 往左(+)右(-)让位 | `zoom:[{at:0,s:1.16},{at:'@b01:黄',s:1}]` 近景开口，说到"黄金"跳中景 |
+| 东西挂在她身后的墙上 | `items:[{at, img/clip/html 或 value+vlabel, label, x, y, w, h, out, gray, no, fill}]`，坐标是原片里墙上空地的中心，挨着她的头发放 | `{img:'assets/img/goldbars.jpg', label:'黄金', x:1490, y:300, w:560, h:376, at:'@b01:黄'}` |
+| 墙上照片推满屏变成实拍 | 那张的 `fill:{clip:'smoke'}`（这一镜最后 0.5 秒）；下一镜 `{scene:'footage', clip:'smoke', from:.5, host:'pip', pipIn:'fade'}` | "乱世" → 真的战火 |
+| 身后换世界 | `swap:{at, words:['利','率'], brow, en, color, size, gap, top}`：房间换成织物舞台，巨字夹在她和底之间；墙上的东西跟房间一起没了 | `swap:{at:'@b05:问+0.1', words:['利','率'], brow:'问题出在', en:'INTEREST RATES'}` |
+| 角上圆窗 | 任何场景加 `host:'pip'`（上一镜是房间：她缩进去；上一镜已经是圆窗：不动；`pipIn:'fade'` 淡入） | 战火、金价图、两篇原文、纽交所 |
+| 竖窗 + 图形板 | 任何场景加 `host:'window'`：这一镜的画面缩进左边的板子（16:9），她在右边竖窗 | 因果链、美联储主席 |
+| 回到房间 | `{scene:'host', enter:'grow'}`（框长回全屏，框里就是这一镜的样子）或 `enter:'drop'`（上一镜往下掉） | 每段证据讲完 |
+
+`--check` 多查一条：没有她的画面连着超过 4.5 秒会提醒。
+
+**line：一条真实的走势（日线）** `{scene:'line', data:{points:[['2025-09-02',3592.2],…]}, title, en, draw:{at,until}, marks:[{at, date:'max'|'last'|'2026-01-29', text, value}], level:{at, text}, focus:{at, from, value, brow}}`
+- 开场先贴近线的起点，边画边拉远看整年（`intro:'none'` 不要）；`level` 从最后一个点往回拉虚线，停在上一次这么低的那天（= "一年多来最低"）；`focus` 推到最近一段，线变红，虚线下面立大数。
+- 数据要有出处（《打仗黄金反而跌》用的是 Yahoo Finance GC=F 日收盘，写进 brief）。
+
+**chain：一条因果链** `{scene:'chain', items:[{at, title, img 或 value, color, sub}]}`
+- 3–4 张竖卡一字排开，念到哪张亮哪张，箭头跟着画出来；镜头只慢推，适合放进 `host:'window'` 的板子里（一句话里连着说三四环，镜头追着跑会糊）。
+
 ## 镜头表怎么写
 
 ```js

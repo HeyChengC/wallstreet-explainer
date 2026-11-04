@@ -13,7 +13,7 @@ if (!dst) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').
 const D = path.resolve(dst);
 let local = {}; try { local = JSON.parse(fs.readFileSync(path.join(SK, 'scripts/local.json'), 'utf8')); } catch {}
 const FONTS = path.resolve(local.fonts_dir ?? path.join(SK, 'fonts'));
-const LIB = ['scripts/stage25d.js', 'scripts/film_base.js', 'scripts/moves.js', 'kit/kit.js', 'kit/scenes.js', 'kit/kit.css'];
+const LIB = ['scripts/stage25d.js', 'scripts/film_base.js', 'scripts/moves.js', 'kit/kit.js', 'kit/scenes.js', 'kit/scenes_plus.js', 'kit/host.js', 'kit/kit.css'];
 const cp = (a, b) => { fs.mkdirSync(path.dirname(b), {recursive: true}); fs.copyFileSync(a, b); };
 
 function copyLib() {

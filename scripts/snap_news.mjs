@@ -1,6 +1,7 @@
 // 新闻/报告原文截图 + 关键词位置（画荧光笔用）。
 //   node snap_news.mjs jobs.json [只截的id…]
 // jobs.json：[{"id":"burn","url":"https://…","find":["$280 billion by 2030","$278 billion"],"off":140}]
+//   要截正文中段：加 "to":"正文里的一句话"，页面滚到那句话离顶 off 像素（不写 to = 滚到标题）
 // 输出：<jobs 同目录>/docs/<id>.png（1600×1000 视口、2 倍像素）和 docs/news.json：
 //   {id:{url,title,h1:[x,y,w,h],hits:[{k,tag,rects:[[x,y,w,h],…]}]}}，坐标是网页 CSS 像素，折行的词会有多个框。
 // 做法：拦广告和同意弹窗的域名 → 去掉所有 fixed/sticky 的大浮层 → 标题滚到离顶 off 像素 → 等字体 → 量 → 截。
@@ -32,7 +33,10 @@ for (const j of jobs) {
   try { await p.goto(j.url, {waitUntil: 'domcontentloaded', timeout: 45000}); } catch (e) { console.log(j.id, '打不开', e.message.split('\n')[0]); }
   await p.waitForTimeout(5000);
   for (let k = 0; k < 3; k++) { try { await p.evaluate(strip); } catch {} await p.waitForTimeout(800); }
-  await p.evaluate(o => { const h = document.querySelector('h1'); if (h) window.scrollTo(0, Math.max(0, h.getBoundingClientRect().top + scrollY - o)); }, j.off ?? 140);
+  // 默认把标题滚到离顶 off 像素；写了 to（正文里的一句话）就滚到那句话（要证据在正文中段时用）
+  await p.evaluate(([o, to]) => { let el = document.querySelector('h1');
+    if (to) { const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) if (n.textContent.includes(to)) { el = n.parentElement; break; } }
+    if (el) window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + scrollY - o)); }, [j.off ?? 140, j.to ?? null]);
   await p.evaluate(() => document.fonts.ready); await p.waitForTimeout(1500); try { await p.evaluate(strip); } catch {}
   const info = await p.evaluate(words => {
     const h = document.querySelector('h1'); const hr = h ? h.getBoundingClientRect() : null; const hits = [];

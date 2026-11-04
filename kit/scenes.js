@@ -548,7 +548,7 @@ K.scene('article',{
   const [zx,zy]=W2((zb[0]+zb[2])/2,(zb[1]+zb[3])/2),tz=Math.max(c.t0+.3,c.at(p.zoom)??c.t0+c.d*.3),th=c.at(p.hlAt)??tz+.6;
   if(c.t1-(th+.45)<1)c.warn(`刷黄以后只停了 ${Math.max(0,c.t1-th-.45).toFixed(1)} 秒就切走：证据至少停 1 秒（zoom / hlAt 提前，或者 until 往后）`);
   // 机位：先看整页的上半（两边露出织物）→ 推向刷黄的那一句，停下来以后慢慢往里推
-  const sA=Math.min(.92,1680/PW),camA={x:960,y:Y0+480/sA,s:sA},camZ={x:zx,y:zy,s:Math.max(1.2,Math.min(1.8,1100/(zb[2]-zb[0]+300)))};
+  const sA=Math.min(.92,1680/PW),camA={x:960,y:Y0+480/sA,s:sA},camZ={x:zx,y:zy,s:p.zoomS??Math.max(1.2,Math.min(1.8,1100/(zb[2]-zb[0]+300)))};   // zoomS：推近到几倍（默认按刷黄那句的宽度算）
   const cam=camSeq([{t:c.t0,cam:{...camA,s:camA.s*.96}},{t:c.t0,cam:camA,d:.9},{t:tz,cam:camZ,d:1.05}],.02);
   return t=>{
    const cc=cam(t),cp=cam(t-1/30),hk=C((t-th)/.45),zk=IO((t-tz)/1.05);

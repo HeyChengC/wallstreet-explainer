@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""混音：timeline.json（配音 + 原声插段）+ sfx.json（音效、配乐）→ mix_master.wav（-14 LUFS）
+"""混音：timeline.json（配音 + 原声插段；真人口播片是口播原片的声音）+ sfx.json（音效、配乐）→ mix_master.wav（-14 LUFS）
 
   python mix.py film            # 读 film/timeline.json、film/sfx.json，写 film/mix_master.wav
   python mix.py film --check    # 混完量各段响度：配音、原声、开头
@@ -39,9 +39,14 @@ def peak(f):
 
 ins, flt, voice = [], [], []
 n = 0
-for b in T['beats']:
-    ins += ['-i', str(D / b['wav'])]; ms = int(round(b['start'] * 1000))
-    flt.append(f'[{n}:a]aresample=48000,aformat=channel_layouts=stereo,adelay={ms}|{ms}[v{n}]'); voice.append(f'[v{n}]'); n += 1
+if T.get('host'):
+    # 真人口播：口播原片的声音就是人声，从 offset 秒开始整条进（host_timeline.py 写的 timeline.host）
+    H = T['host']; ins += ['-i', str((D / H['src']).resolve())]; ms = int(round(H.get('offset', 0) * 1000))
+    flt.append(f"[{n}:a]aresample=48000,aformat=channel_layouts=stereo,highpass=f=70,volume={H.get('gain_db', 0)}dB,adelay={ms}|{ms}[v{n}]"); voice.append(f'[v{n}]'); n += 1
+else:
+    for b in T['beats']:
+        ins += ['-i', str(D / b['wav'])]; ms = int(round(b['start'] * 1000))
+        flt.append(f'[{n}:a]aresample=48000,aformat=channel_layouts=stereo,adelay={ms}|{ms}[v{n}]'); voice.append(f'[v{n}]'); n += 1
 bites = D / 'voice' / 'bites'; bites.mkdir(parents=True, exist_ok=True)
 for it in T.get('inserts', []):
     for p in it['parts']:

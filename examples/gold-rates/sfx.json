@@ -1,0 +1,30 @@
+{
+ "dir": "../../../../library/sfx/synth",
+ "bed": {"file": "../../../skills/paper-sticker-explainer/bgm/explain_curiosity.mp3", "gain": -15, "from_pre": false, "fade_in": 0.3},
+ "events": [
+  {"file": "tick_soft.wav", "at": ["b01", "黄"], "peak": -24},
+  {"file": "tick_soft.wav", "at": ["b02", "乱"], "peak": -24},
+  {"file": "whoosh_soft.wav", "t": 4.30, "peak": -17},
+  {"file": "tick_soft.wav", "at": ["b03", "最"], "peak": -25},
+  {"file": "whoosh_soft.wav", "at": ["b04", "光"], "shift": -0.05, "peak": -21},
+  {"file": "impact_low.wav", "at": ["b04", "光"], "shift": 0.45, "peak": -14, "len": 1.1},
+  {"file": "whoosh_soft.wav", "at": ["b05", "问"], "shift": -0.05, "peak": -20},
+  {"file": "whoosh_up.wav", "at": ["b05", "问"], "shift": -0.2, "peak": -18},
+  {"file": "impact_low.wav", "at": ["b05", "问"], "shift": 0.12, "peak": -17, "len": 1.0},
+  {"file": "whoosh_soft.wav", "at": ["b06", "打"], "shift": -0.02, "peak": -20},
+  {"file": "tick_soft.wav", "at": ["b06", "油"], "peak": -26},
+  {"file": "tick_soft.wav", "at": ["b06", "通"], "peak": -26},
+  {"file": "tick_soft.wav", "at": ["b06", "住"], "peak": -24},
+  {"file": "whoosh_soft.wav", "at": ["b07", "1"], "shift": -0.02, "peak": -21},
+  {"file": "tick_soft.wav", "at": ["b07", "1"], "shift": 0.4, "peak": -25},
+  {"file": "whoosh_soft.wav", "at": ["b08", "黄"], "shift": -0.02, "peak": -20},
+  {"file": "tick_soft.wav", "at": ["b09", "利"], "peak": -24},
+  {"file": "whoosh_soft.wav", "at": ["b10", "加"], "shift": -0.22, "peak": -20},
+  {"file": "tick_soft.wav", "at": ["b10", "着"], "shift": 0.55, "peak": -25},
+  {"file": "whoosh_soft.wav", "at": ["b11", "下"], "shift": -0.02, "peak": -20},
+  {"file": "tick_soft.wav", "at": ["b11", "乱"], "peak": -25},
+  {"file": "tick_soft.wav", "at": ["b11", "黄"], "peak": -25},
+  {"file": "whoosh_up.wav", "at": ["b11", "看"], "shift": -0.25, "peak": -17},
+  {"file": "impact_low.wav", "at": ["b11", "看"], "shift": 0.05, "peak": -15, "len": 1.2}
+ ]
+}

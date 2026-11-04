@@ -289,11 +289,11 @@ async function use(F){
  // ---------- 参数名查一遍：写错的参数（lable、untill）模板不认识，会被静默丢掉，看不了图的模型根本发现不了 ----------
  // 每个场景只认自己的参数：help、defaults、need 里写了的，加上模板代码里读到的 p.xxx（board 家族的代码在 def.code 里）。
  // 嵌套在 items / nodes / steps 里的字段名，对照模板代码里出现过的所有名字。note 随便写备注，'_' 开头的不查，custom 不查。
- const FREE=['scene','until','says','enter','tone','glow','dust','throughAt','throughScale','note'];
+ const FREE=['scene','until','says','enter','tone','glow','dust','throughAt','throughScale','note','host','pipIn'];   // host：'pip' / 'window'，真人口播层（host.js）
  let VOCAB;
  async function vocab(){
   if(VOCAB!==undefined)return VOCAB;
-  const urls=[...document.scripts].map(s=>s.src).filter(s=>/\/(stage25d|film_base|moves|kit|scenes)\.js(\?.*)?$/.test(s));
+  const urls=[...document.scripts].map(s=>s.src).filter(s=>/\/(stage25d|film_base|moves|kit|scenes|scenes_plus|host)\.js(\?.*)?$/.test(s));
   try{const set=new Set();for(const u of urls){const t=await (await fetch(u)).text();for(const m of t.matchAll(/[A-Za-z_$][\w$]*/g))set.add(m[0]);}VOCAB=urls.length>=2&&set.size>500?set:null;}
   catch{VOCAB=null;}   // 双击直接打开（file://）读不到源码：这一项不查
   return VOCAB;

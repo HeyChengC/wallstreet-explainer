@@ -1,12 +1,51 @@
 ---
 name: wallstreet-explainer
-description: 华尔街式的财经/科技解读短片（1–3 分钟、16:9、没有主持人出镜）：用真实的人、真实的新闻和官方画面作证据；当事人的实拍抠像替代主持人（人站在巨字前面、人身后换背景、横推换人）；图形（照片圆盘、金色大数字、柱子和图表）只用来演钱和关系，底是一张细斜纹深蓝织物，镜头在有前后层的 2.5D 世界里走，每一镜都接住上一镜往下推。两档做法：模板档（kit：一条片 = 一张镜头表，选场景、填内容，镜头和动效由模板管，render.mjs --check 用文字自检，目标是弱一些的模型也能稳定出片）和手写档（强模型逐镜手写）。配一套工具：找片下片抽帧、新闻原文截图、GPU 逐帧抠人、临时配音和时间线、逐帧渲染、镜头运动自检、混音。用户说"wallstreet-explainer""做一条财经/科技解读""把一笔账讲清楚""巨头砸钱/估值/营收/资金循环这类题目"时使用；有真人口播出镜的片子不用这个。
+description: 华尔街式的财经/科技解读短片（1–3 分钟、16:9，风格学自小Lin说），两种模式按有没有真人视频自动选：用户给了口播视频（真人或数字人，一个机位）就走真人口播模式——她是片子的"地面"，证据挂到她身后的墙上、关键词她身后换成织物舞台和巨字、讲证据时缩进圆窗或竖窗再长回全屏；没给就走无人动效包装模式——当事人实拍抠像站在巨字前面。两种模式共用：真实的人、新闻原文和官方画面作证据，图形（照片圆盘、金色大数字、柱子、图表、金价线、因果链）只演钱和关系，细斜纹深蓝织物底，克制的 2.5D，每一镜接住上一镜。模板档（镜头表 + render.mjs --check 自检）和手写档。工具：找片下片、新闻截图和荧光笔、逐帧抠像、口播逐字对齐、配音时间线、逐帧渲染、合成音效、混音。用户说"wallstreet-explainer""wallstreet-presenter""像《AI到底有多烧钱》那样""做一条财经/科技解读""真人口播财经""小Lin说那种""我有口播视频，帮我包装成财经解读""把一笔账讲清楚"时使用。
 ---
 
-# 华尔街式解读片（wallstreet-explainer）
+# 华尔街式财经解读（wallstreet-explainer）
 
-**讲一笔大账：真的人、真的新闻、真的画面作证据，图形舞台把数字和关系演出来；每一镜都接住上一镜的东西往下走，观众始终知道“现在在看什么、为什么看这个”。**
-**动的是镜头和世界，不是元素自己演：镜头在有前后层的舞台里推、拉、摇，去找正在说的那个东西；东西在原地换状态。每一下动作都对着那句话的意思。**
+**讲一笔账：真的人、真的新闻、真的画面作证据，图形把数字和关系演出来；每一镜都接住上一镜的东西往下走。**
+
+## 先选模式：用户有没有给真人视频
+
+| 用户给了 | 走哪个模式 | 先读 |
+|---|---|---|
+| 一条口播视频（真人或数字人，一个机位、不切） | **真人口播模式**：她是片子的"地面"，观众每离开她一会儿就回到她身边 | `references/presenter.md`，再读下面"真人口播模式" |
+| 只有题目、文案、或者什么都没有 | **无人动效包装模式**：没有主持人，当事人实拍抠像来演"人站在巨字前面"，配音用临时语音或豆包 | 直接看下面"这份 skill 是什么"往后 |
+
+拿不准就问一句"有没有口播视频"。两种模式画风、规则、场景、手法库、工具全一样，下面"这份 skill 是什么"往后的内容两种都适用。
+
+## 真人口播模式
+
+- 证据和图形不是盖掉她，而是挂进她的房间、或者把她带进图形的世界。
+- 多出来的东西：
+  - `references/presenter.md`：**先读这份**。真人怎么融进来：七种样子、之间怎么走、墙上挂东西放哪、景别、声音、量出来的数（四条小Lin说）。
+  - `kit/host.js`：口播层。`scene:'host'`（房间全屏 / `items` 挂墙 / `swap` 身后换世界 / `zoom` 景别跳），任何场景加 `host:'pip'`（角上圆窗）或 `host:'window'`（竖窗 + 图形板），`enter:'grow'` / `'drop'` 回到房间。
+  - `kit/scenes_plus.js`：`line`（真实日线走势）、`chain`（因果链：打仗 → 油价 → 通胀 → 利率）。
+  - `scripts/host_timeline.py`（口播逐字对齐成时间线，口播就是配音）、`scripts/sfx_synth.py`（合成风声、低音撞击、轻响）；`mix.py` 认得口播原声。
+  - 例子：`examples/gold-rates/`（《打仗了，黄金为什么反而跌》，28 秒）。
+- 无人模式里"当事人抠像站在巨字前面"那一套：有了主持人，这些动作优先给她（`host` 的 `swap`）；当事人回到实拍、圆盘、原文里。`person` 场景照样能用。
+
+### 真人口播片怎么做
+
+```
+node scripts/new_film.mjs <片子目录>
+（口播抽 30fps 帧到 assets/clips/host/，counts.json 登记 "host": 帧数；ffmpeg -i 口播.mp4 -vf fps=30,scale=1920:1080 assets/clips/host/%04d.jpg）
+python scripts/matte.py <片子目录>/assets/clips/host <片子目录>/assets/cut/host      # 逐帧抠她（挂墙、换世界要用），然后 matte_clean.py
+（写 script.json：lines 写她实际说的话，一句一个 id，字幕就用这份）
+python scripts/host_timeline.py <口播.mp4> <片子目录>/script.json <片子目录>/timeline.json [--tail 1.0]
+（写 film.js：FB.init → KIT.use → await KIT_HOST.use(K,{faceY:她脸中心在原片里的 y}) → K.film([...])）
+node scripts/render.mjs --dir <片子目录> --check / --sheet / --video --h 720
+python scripts/sfx_synth.py library/sfx/synth     # 一次就行
+（写 sfx.json：配乐 + 音效卡在换样子的地方，见 references/presenter.md 的"声音"）
+python scripts/mix.py <片子目录> --check
+```
+
+流程和原版一样每站停下来给用户看，区别在：
+- **站 1 文案**：文案就是她的口播。拿到口播先转写（`host_timeline.py` 会打印识别结果），和用户核对她说的字（数字人常有读错、识别也会听错）；事实照样要查清、留链接。
+- **站 2 导演表**：每一镜多一列"她在哪"：房间 / 挂墙 / 换世界 / 竖窗 / 圆窗 / 不在。先按 `presenter.md` 的"判断用这几句"排她的位置，再填画面。
+- **站 4 时间线**：不用临时配音，`host_timeline.py` 从口播里逐字对齐；片子的 t 就是口播的 t。
 
 ## 这份 skill 是什么
 
@@ -101,6 +140,7 @@ node scripts/render.mjs --dir <片子目录> --video --h 720
 
 | 在做什么 | 读 |
 |---|---|
+| 真人怎么融进来：七种样子、怎么走、挂墙、景别、声音 | `references/presenter.md`（先读） |
 | 必须守的规则（编号、能检查）、“这句话 → 场景”决策表 | `references/rules.md` |
 | 模板档：场景、参数、镜头表写法、时刻、接法、颜色 | `kit/README.md`（图在 `kit/gallery/`） |
 | 想一镜该放什么、为什么、凭什么接下一镜 | `references/thinking.md` |
@@ -112,7 +152,7 @@ node scripts/render.mjs --dir <片子目录> --video --h 720
 | 文案、配音、原声剪口、音效、混音 | `references/audio.md` |
 | 交付前自检 | `references/review.md` |
 | 实践中踩过的坑 | `references/lessons.md` |
-| 两条成片是怎么想出来的 | `examples/ai-burn-money/`（77 秒，六个版本）、`examples/google-apple-20b/`（28 秒，真素材手写） |
+| 成片是怎么想出来的 | `examples/gold-rates/`（真人口播 28 秒）、`examples/ai-burn-money/`（77 秒，六个版本）、`examples/google-apple-20b/`（28 秒，真素材手写） |
 
 ## 工具（scripts/）
 
@@ -132,7 +172,10 @@ node scripts/render.mjs --dir <片子目录> --video --h 720
 | `render.mjs` | 逐帧渲染：`--check` 查镜头表（模板档，几秒，不渲染）、`--sheet` 每镜三帧拼图、`--stills` 看帧、`--video --range` 渲一段、`--h 1080` 出成片（渲完自动报“第几秒画面是空的”）；`--moves [--prev 上一条/out/moves.json]` 查手法用量 |
 | `strip.py` | 连续帧拼图：一个动作 8 张，查静帧看不出来的穿帮；也用来拆参考片的动作 |
 | `motion_check.py` | 镜头运动自检：画面完全不动的时间、定住次数、镜头在动的时间、前后层、推拉比，和参考片的区间比 |
-| `mix.py` | 配音、原声、音效、配乐（配乐给人声让路）→ -14 LUFS；`--check` 量各段响度 |
+| `mix.py` | 配音、原声、音效、配乐（配乐给人声让路）→ -14 LUFS；`--check` 量各段响度。时间线里有 `host` 就把口播原声整条当人声 |
+| `host_timeline.py` | 真人口播 → `timeline.json`：faster-whisper 逐词识别，逐字对齐到 script.json 的正文（同音字识别错不影响时刻），`--tail` 片尾多留几秒 |
+| `sfx_synth.py` | 合成四样音效：软风声、上扬风声、低沉撞击、轻响（没有版权问题） |
+| `kit/host.js` `kit/scenes_plus.js` | 口播层（host、pip、window、grow、drop）和新场景（line、chain），`new_film.mjs` 会拷进片子的 `lib/` |
 
 依赖：ffmpeg、yt-dlp、Python（edge-tts、numpy、opencv-python、Pillow；可选 faster-whisper；抠人要 onnxruntime-gpu 和 rembg 下载的模型）、Node 和 Playwright。安装方法见 README。
 
