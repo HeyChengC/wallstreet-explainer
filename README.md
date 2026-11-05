@@ -8,7 +8,7 @@
 
 <img src="examples/ai-burn-money/sample.gif" alt="无人出镜样片" width="100%">
 
-**无人出镜版**：《AI 到底有多烧钱》，77 秒。
+**无人出镜版**：《AI 到底有多烧钱》，77 秒，GIF 是前 29 秒。
 
 GIF 没有声音。片中新闻截图和实拍为引用，出处见 [CREDITS.md](examples/ai-burn-money/CREDITS.md)。
 
