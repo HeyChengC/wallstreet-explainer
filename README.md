@@ -2,11 +2,11 @@
 
 让 AI 做华尔街风格的财经解读短片：真实的新闻和画面，金色大数字，深蓝织物底，镜头一直在走。
 
-![真人口播样片](examples/gold-rates/sample.gif)
+<img src="examples/gold-rates/sample.gif" alt="真人口播样片" width="100%">
 
 **真人口播版**：《打仗了，黄金为什么反而跌》，29 秒。主持人是 AI 生成的数字人。
 
-![无人出镜样片](examples/ai-burn-money/sample.gif)
+<img src="examples/ai-burn-money/sample.gif" alt="无人出镜样片" width="100%">
 
 **无人出镜版**：《AI 到底有多烧钱》，77 秒。
 
@@ -20,8 +20,6 @@ GIF 没有声音。片中新闻截图和实拍为引用，出处见 [CREDITS.md]
 - 没有口播视频，就把新闻里的当事人抠出来，站在大字前面。
 - 素材自己去视频网站找，新闻网页自己截，关键句刷黄。
 - 数字和钱的关系用大字、柱子、图表演出来。
-
-![镜头动作连续帧](examples/ai-burn-money/moves_v6.jpg)
 
 ## 安装
 
