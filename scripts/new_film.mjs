@@ -35,22 +35,37 @@ if (SYNC) {
   if (!fs.existsSync(path.join(D, 'index.html'))) { console.error(`${D} 不是片子目录（没有 index.html）`); process.exit(1); }
   copyLib(); linkFonts();
   console.log(`已更新 ${D}\\lib 和 assets\\kit 到 skill 的最新版。先 --stills 看几帧，确认老镜头没有变样。`);
+  // --sync 不动 index.html（那是用户的片子入口，可能被改过），所以新加的 lib 不会自动生效
+  const html = fs.readFileSync(path.join(D, 'index.html'), 'utf8');
+  if (!html.includes('politics.js')) {
+    console.log(`注意：${D}\\index.html 没有引用 lib/politics.js。要用时政场景（stance-matrix / event-timeline / verdict）和来源角标，`
+      + `在 <script src="lib/host.js"></script> 后面手动加一行：<script src="lib/politics.js"></script>`);
+  }
   process.exit(0);
 }
 if (fs.existsSync(D) && fs.readdirSync(D).length) { console.error(`目标已存在且不是空的：${D}`); process.exit(1); }
 fs.mkdirSync(D, {recursive: true});
-const src = path.join(SK, DEMO2 ? 'kit/demo2' : DEMO ? 'kit/demo' : 'starter');
+const src = path.join(SK, DEMO2 ? 'kit/demo2' : DEMO ? 'kit/demo' : POL ? 'starter-politics' : 'starter');
 cp(path.join(SK, 'starter/index.html'), path.join(D, 'index.html'));
 cp(path.join(SK, 'starter/film.css'), path.join(D, 'film.css'));
 cp(path.join(src, 'film.js'), path.join(D, 'film.js'));
 cp(path.join(src, 'script.json'), path.join(D, 'script.json'));
+// 时政起点多两样：事实底稿和它引用的本地材料（随 starter-politics 一起拷）
+if (POL) {
+  cp(path.join(src, 'editorial.json'), path.join(D, 'editorial.json'));
+  const docs = path.join(src, 'assets', 'docs');
+  if (fs.existsSync(docs)) for (const f of fs.readdirSync(docs)) cp(path.join(docs, f), path.join(D, 'assets', 'docs', f));
+  cp(path.join(src, 'film.css'), path.join(D, 'film.css'));
+}
 copyLib(); linkFonts();
 for (const d of ['assets/img', 'assets/clips', 'assets/cut', 'voice', 'out']) fs.mkdirSync(path.join(D, d), {recursive: true});
+if (POL) fs.mkdirSync(path.join(D, 'assets', 'docs'), {recursive: true});
 fs.writeFileSync(path.join(D, 'assets/clips/counts.json'), '{}');
 const tl = stub(JSON.parse(fs.readFileSync(path.join(D, 'script.json'), 'utf8')));
 fs.writeFileSync(path.join(D, 'timeline.json'), JSON.stringify(tl, null, 1));
 const R = path.join(SK, 'scripts/render.mjs'), TS = path.join(SK, 'scripts/timeline_stub.mjs');
 console.log(`建好了：${D}（估出来的时间线 ${tl.duration} 秒，还没有配音）`);
+if (POL) console.log('  时政起点：film.js 已带 K.politics 角标和 verdict/event-timeline 示例；先看 editorial.json（虚构样例）');
 console.log('下一步：');
 const steps = DEMO ? [] : [
   `写 script.json（文案，一句一个 id，写法见 kit/README.md「文案 script.json」）`,

@@ -118,7 +118,7 @@ K.politics.fiction(true, '虛構演繹 · 人物與情節均為虛構');   // �
 ## 常用命令
 
 ```powershell
-node scripts/new_film.mjs <片子目录> --politics          # 建时政片子（带 politics.js 和起点 film.js）
+node scripts/new_film.mjs <片子目录> --politics          # 建时政片子：5 镜起点 + editorial.json + 本地虚构材料
 node scripts/timeline_stub.mjs <片子>/script.json        # 没配音时先估时间线
 python scripts/temp_voice.py <片子>/script.json          # edge-tts 临时配音 + 逐字时间线
 python scripts/check_editorial.py <片子>/editorial.json  # 事实底稿：0 过 / 1 停 / 2 看提醒
@@ -127,6 +127,10 @@ node scripts/render.mjs --dir <片子> --check-policy politics --sheet   # 每�
 node scripts/render.mjs --dir <片子> --check-policy politics --video --h 720
 python scripts/mix.py <片子> --check
 ```
+
+`--politics` 建出来的起点是**虚构样例**（可离线跑通）：换成真实题材时，把 `editorial.json` 的 `content_mode` 改成 `factual`、删掉 `film.js` 里的 `K.politics.fiction(...)`、`sources` 换成真实来源。
+
+老片子加时政能力用 `--sync`，但它**不会**给你的 `index.html` 加 `<script src="lib/politics.js"></script>`，要手动加，否则新场景不可用。
 
 `--check-policy politics` 关掉财经专属配额（真素材≥40%、滚数≤2、酒红底≤1 段、同一家公司同色），换成"证据镜要挂 sourceIds"这类实质检查。不写这个参数就是上游默认行为，财经片照旧。
 

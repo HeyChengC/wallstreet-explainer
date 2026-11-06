@@ -8,9 +8,27 @@
 node scripts/new_film.mjs <片子目录> --politics
 ```
 
-建出来是：`index.html`（已经引好 `lib/politics.js`）、`film.css`、`film.js`（时政起点，带 `K.politics.badges` 示例）、`script.json`、`lib/`、`assets/kit/`、`fonts/`（联接到字体目录）。
+建出来的是**可运行的时政起点**：`index.html`（已引 `lib/politics.js`）、`film.js`（5 镜，带角标和 `verdict`/`event-timeline` 示例）、`script.json`、**`editorial.json`**、`assets/docs/`（它引用的三份本地虚构材料）、`lib/`、`assets/kit/`、`fonts/`。
 
-**老片子要加时政能力**：`node scripts/new_film.mjs <老片子> --sync` 只更新 `lib/` 和 `assets/kit/`，不动 `film.js` 和文案。
+起点默认是 **fiction** 模式（虚构城市 + 常驻虚构标记），因为这样不用联网就能跑通。换成真实题材时三件事一起做：
+
+1. `editorial.json` 的 `content_mode` 改 `factual`，`sources` 换成真实来源；
+2. 删掉 `film.js` 里的 `K.politics.fiction(...)` 那一行；
+3. `K.politics.badges` 换成你自己核实过的来源。
+
+**老片子要加时政能力**：
+
+```powershell
+node scripts/new_film.mjs <老片子> --sync
+```
+
+`--sync` 只更新 `lib/` 和 `assets/kit/`，**不动你的 `index.html`**（那可能被你改过）。所以新加的 `lib/politics.js` 不会自动生效——脚本会检测并提示。要用时政场景，手动在 `<script src="lib/host.js"></script>` 后面加一行：
+
+```html
+<script src="lib/politics.js"></script>
+```
+
+没加这一行，`stance-matrix` / `event-timeline` / `verdict` 和角标都不会工作（页面会报"没有这个场景"）。**不要指望 `--sync` 一步给老片子开新场景。**
 
 ## 站 1：事实底稿 editorial.json
 

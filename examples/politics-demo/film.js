@@ -24,9 +24,9 @@ K.politics.badges([
 ]);
 
 await K.film([
- // 0 钩子：一句话把这个缺口摆出来
- {scene:'statement', until:'@b02', says:'方案通篇不提收费，这是全片要追问的缺口', claimIds:['c1'],
-  lines:['一份方案','不寫「收費」'], brow:'海嵐 · 過海隧道', tone:'navy'},
+ // 0 钩子：把最反常的事实先摆出来（不是"没提收费"，是"提了四次、一个数字没有"）
+ {scene:'statement', until:'@b02', says:'方案四次提到收费，却没给费率与日期，这是全片要追问的缺口', claimIds:['c1'],
+  lines:['提了收費','沒給價格'], brow:'海嵐 · 過海隧道', tone:'navy'},
 
  // 1 把缺口变成一个数：提到了，但一个数字都没有
  {scene:'number', until:'@b03', says:'方案四次提到收费，但没有一个费率、没有一个起始日', claimIds:['c1'],

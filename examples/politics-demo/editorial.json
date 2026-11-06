@@ -25,7 +25,7 @@
  ],
  "claims": [
   {"id": "c1", "kind": "fiction", "text": "白皮書 147 頁、26 次提及過海隧道、4 次提及收費，但沒有任何具體費率、收費起始日或測算數字。",
-   "beat_ids": ["b07", "b08", "b09"], "source_ids": ["s1", "s3"], "event_date": "2026-09-16"},
+   "beat_ids": ["b01", "b02", "b07", "b08", "b09"], "source_ids": ["s1", "s3"], "event_date": "2026-09-16"},
   {"id": "c2", "kind": "fiction", "text": "中期預算說明把隧道維護支出列在通行費收入項下。",
    "beat_ids": ["b05", "b06"], "source_ids": ["s2"], "event_date": "2025-11-20"},
   {"id": "c3", "kind": "fiction", "text": "交通局在記者會上說收費方案另行公布、分階段推進。",

@@ -1,0 +1,34 @@
+{
+ "config": {
+  "region": "general",
+  "stance": "neutral",
+  "styles": ["objective"],
+  "emotion": 1,
+  "profanity": "none",
+  "content_mode": "fiction",
+  "fiction_marker": "虛構演繹 · 人物與情節均為虛構",
+  "language": "zh-TW",
+  "duration_seconds": 60,
+  "as_of": "2026-11-06T14:00:00+08:00",
+  "note": "起点样例：城市与机构都是虚构的，sources 指向本地测试材料。换成真实题材时，把 content_mode 改 factual、sources 换成真实来源，并删掉 film.js 里的 K.politics.fiction 那一行。"
+ },
+ "sources": [
+  {"id": "s1", "url": "assets/docs/traffic-white-paper.md", "publisher": "某某市政府（虚构）", "title": "交通方案（測試材料）",
+   "published_at": "2026-09-16", "accessed_at": "2026-11-06", "source_type": "synthetic",
+   "note": "本地虚构文件，随起点附带；只用于跑通流程，不代表任何真实机构。"},
+  {"id": "s2", "url": "assets/docs/budget-note.md", "publisher": "某某市财政部門（虚构）", "title": "中期預算說明（測試材料）",
+   "published_at": "2025-11-20", "accessed_at": "2026-11-06", "source_type": "synthetic",
+   "note": "本地虚构文件。"}
+ ],
+ "claims": [
+  {"id": "c1", "kind": "fiction", "text": "方案 4 次提到收費，但沒有費率、起始日或測算數字。",
+   "beat_ids": ["b02", "b07"], "source_ids": ["s1"], "event_date": "2026-09-16"},
+  {"id": "c2", "kind": "fiction", "text": "中期預算說明把該設施維護支出列在收費收入項下。",
+   "beat_ids": ["b04", "b05"], "source_ids": ["s2"], "event_date": "2025-11-20"},
+  {"id": "c3", "kind": "fiction", "text": "記者會宣布分階段推進；議會交通委員會要求三個月內交出測算。",
+   "beat_ids": ["b08", "b09"], "source_ids": ["s1"]},
+  {"id": "c4", "kind": "analysis", "text": "這一輪不會立刻收費，但收費通道已經鋪好；十二月簡報是關鍵觀察點。",
+   "beat_ids": ["b11", "b12"], "source_ids": ["s2"],
+   "reasoning": "方案提收費卻不給費率與起始日、預算已把維護支出掛在同一項收入下、議會要求交測算——三件事方向一致，但都沒有時間表，所以說開關裝好，不是說馬上收費。"}
+ ]
+}
