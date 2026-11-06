@@ -3,17 +3,19 @@
 //   node scripts/new_film.mjs <片子目录> --demo     示例片：每个场景用一次（kit/demo/），看模板长什么样、照着抄写法
 //   node scripts/new_film.mjs <片子目录> --demo2    示例片二：后加的 11 个场景各用一次（kit/demo2/）
 //   node scripts/new_film.mjs <片子目录> --sync     老片子：只把 lib/ 和 assets/kit/ 更新到 skill 的最新版（film.js、素材不动）
+//   node scripts/new_film.mjs <片子目录> --politics 时政片：多拷 lib/politics.js，film.js 用 kit/politics-demo 的起点
 // 字体不拷：fonts/ 是指向字体目录的联接，联接建不了才拷。字体目录写在 scripts/local.json 的 fonts_dir（没写就用 skill 里的 fonts/）。
 import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} from 'node:url';
 import {stub} from './timeline_stub.mjs';
 
 const SK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2), dst = args.find(a => !a.startsWith('--')), DEMO2 = args.includes('--demo2'), DEMO = DEMO2 || args.includes('--demo'), SYNC = args.includes('--sync');
+const POL = args.includes('--politics');
 if (!dst) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(0, 6).join('\n')); process.exit(1); }
 const D = path.resolve(dst);
 let local = {}; try { local = JSON.parse(fs.readFileSync(path.join(SK, 'scripts/local.json'), 'utf8')); } catch {}
 const FONTS = path.resolve(local.fonts_dir ?? path.join(SK, 'fonts'));
-const LIB = ['scripts/stage25d.js', 'scripts/film_base.js', 'scripts/moves.js', 'kit/kit.js', 'kit/scenes.js', 'kit/scenes_plus.js', 'kit/host.js', 'kit/kit.css'];
+const LIB = ['scripts/stage25d.js', 'scripts/film_base.js', 'scripts/moves.js', 'kit/kit.js', 'kit/scenes.js', 'kit/scenes_plus.js', 'kit/host.js', 'kit/politics.js', 'kit/kit.css'];
 const cp = (a, b) => { fs.mkdirSync(path.dirname(b), {recursive: true}); fs.copyFileSync(a, b); };
 
 function copyLib() {

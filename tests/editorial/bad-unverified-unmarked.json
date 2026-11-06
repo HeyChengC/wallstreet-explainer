@@ -1,0 +1,1 @@
+{"config":{"region":"general","stance":"neutral","styles":["objective"],"content_mode":"factual"},"sources":[{"id":"s1","url":"https://example.gov.hk/a","publisher":"X","title":"Y","source_type":"press","published_at":null}],"claims":[{"id":"c1","kind":"unverified","text":"有人收钱","beat_ids":["b01"],"source_ids":["s1"]}]}

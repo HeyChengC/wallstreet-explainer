@@ -1,0 +1,1 @@
+{"config":{"region":"general","stance":"neutral","styles":["objective"],"content_mode":"factual"},"sources":[{"id":"s1","url":"https://example.gov.hk/a","publisher":"X","title":"Y","source_type":"gov-press","published_at":"2026-01-01"}],"claims":[{"id":"c1","kind":"fact","text":"z","beat_ids":["b01"],"source_ids":["s9"]}]}

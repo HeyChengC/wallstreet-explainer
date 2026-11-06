@@ -17,6 +17,12 @@ import {stub} from './timeline_stub.mjs';
 
 const arg = k => { const i = process.argv.indexOf(k); return i >= 0 ? process.argv[i + 1] : null; };
 const has = k => process.argv.includes(k);
+// 检查策略：upstream（默认，财经那套配额）/ politics（时政）。非法值直接报错，不静默退回。
+// 页面侧怎么拿到：index.html 里 KIT.use(F) 之前写 KIT.use(F,{policy:new URLSearchParams(location.search).get('policy')}) 也行，
+// 但更稳的是 render.mjs 传 query，film.js 不用改（见 POLITICS_BOOT）。
+const POLICY = arg('--check-policy') ?? 'upstream';
+const POLICIES = ['upstream', 'politics'];
+if (!POLICIES.includes(POLICY)) { console.error(`--check-policy 只能是 ${POLICIES.join(' / ')}，现在是 '${POLICY}'`); process.exit(1); }
 function loadPlaywright() {
   const here = path.dirname(fileURLToPath(import.meta.url)); let local = {};
   try { local = JSON.parse(fsSync.readFileSync(path.join(here, 'local.json'), 'utf8')); } catch {}
@@ -69,7 +75,7 @@ async function page() {
   p.on('pageerror', e => errs.push(e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); else if (m.type() === 'warning' && /^\[(moves|kit)\]/.test(m.text())) warns.push(m.text()); });
   p.on('requestfailed', q => errs.push('请求失败 ' + q.url())); p.on('response', s => { if (s.status() >= 400) errs.push(s.status() + ' ' + s.url()); });
-  await p.goto(`http://127.0.0.1:${port}/${PAGE}`);
+  await p.goto(`http://127.0.0.1:${port}/${PAGE}?policy=${POLICY}`);
   try { await p.evaluate(() => window.ready); }
   catch (e) {
     // Playwright 包的那层（page.evaluate: Error: ……）和代码位置不给人看，只留我们自己写的那句话
@@ -94,6 +100,10 @@ if (has('--check')) {
   if (errs.length) console.log('页面报错（先修）：\n- ' + [...new Set(errs)].slice(0, 8).join('\n- '));
   if (!r) { console.log('页面里没有镜头表：film.js 没用 K.film（手写的片子用 --moves 查手法）'); process.exit(0); }
   fsSync.writeFileSync(path.join(out, 'check.json'), JSON.stringify(r, null, 1));   // 同一份镜头表和提醒，给别的脚本读（kit/gallery/make.py）
+  console.log(`检查策略：${POLICY}${r.policy ? (r.policy === POLICY ? '' : `（页面报的是 ${r.policy}，和命令行不一致，检查一下 film.js 有没有自己传 policy）`) : ''}`);
+  if (r.fiction) console.log(r.fiction.on
+    ? `虚构标记：全片常驻「${r.fiction.text}」${r.fiction.missing?.length ? `，但有 ${r.fiction.missing.length} 处缺` : '，每一镜都验过'}`
+    : '虚构标记：未开启（factual 模式正常；fiction 模式要 K.politics.fiction(true, …)）');
   console.log('镜  时间            时长   场景        接法       says');
   for (const s of r.shots) console.log(`${String(s.i + 1).padStart(2)}  ${s.t0.toFixed(1).padStart(5)}–${s.t1.toFixed(1).padEnd(6)} ${(s.t1 - s.t0).toFixed(1).padStart(4)}s  ${s.scene.padEnd(10)} ${s.enter.padEnd(10)} ${s.says || '（没写）'}`);
   console.log(r.warns.length ? `\n要看一眼（${r.warns.length} 条）：\n- ` + r.warns.join('\n- ') : '\n没有要提醒的。');
@@ -172,7 +182,7 @@ if (!has('--video')) { console.log('用 --stills 或 --video'); server.close(); 
 const RG = arg('--range'), F0 = RG ? Math.round(Number(RG.split(':')[0]) * fps) : 0, F1 = RG ? Math.min(N, Math.round(Number(RG.split(':')[1]) * fps)) : N;
 const K = Number(arg('--workers') ?? 6), size = Math.ceil((F1 - F0) / K), starts = []; const t0 = Date.now();
 await Promise.all(Array.from({length: K}, (_, i) => { const a = F0 + i * size, z = Math.min(F1, a + size); if (a >= z) return null; starts.push(a);
-  return new Promise((res, rej) => { const c = spawn(process.execPath, [fileURLToPath(import.meta.url), '--dir', here, '--page', PAGE, '--out', out, '--worker', `${a}:${z}`, '--port', String(port), '--h', String(H)], {stdio: 'inherit'}); c.on('exit', x => x === 0 ? res() : rej(new Error('worker ' + a))); }); }));
+  return new Promise((res, rej) => { const c = spawn(process.execPath, [fileURLToPath(import.meta.url), '--dir', here, '--page', PAGE, '--out', out, '--worker', `${a}:${z}`, '--port', String(port), '--h', String(H), '--check-policy', POLICY], {stdio: 'inherit'}); c.on('exit', x => x === 0 ? res() : rej(new Error('worker ' + a))); }); }));
 starts.sort((a, b) => a - b);
 await fs.writeFile(path.join(out, `list_${H}.txt`), starts.map(s => `file 'seg_${H}_${s}.mp4'`).join('\n'));
 const vout = path.join(out, RG ? `visual_${H}_range.mp4` : `visual_${H}.mp4`);

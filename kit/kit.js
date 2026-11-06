@@ -274,11 +274,19 @@ function wrapEnter(f,c){
 }
 
 // ---------- 绑定一条片 ----------
-async function use(F){
+// o.policy：检查策略。'upstream'（默认）= 财经片那套硬配额；'politics' = 时政片：不沿用镜头占比、滚数、酒红底这类财经审美配额，
+// 换成"事实有来源、证据够读懂"的实质检查（见 references/politics-rules.md）。render.mjs --check-policy 传到这儿。
+const POLICIES=['upstream','politics'];
+async function use(F,o={}){
+ // o.policy 优先；没写就读页面 URL 的 ?policy=（render.mjs --check-policy 会带上）。这样 film.js 一个字都不用改。
+ const policy=o.policy??(typeof location!=='undefined'&&new URLSearchParams(location.search).get('policy'))??'upstream';
+ if(!POLICIES.includes(policy))throw Error(`检查策略只能是 ${POLICIES.join(' / ')}，现在是 '${policy}'`);
  const T=timer(F.T);
  F.stage.style.setProperty('--s25-grain','url(assets/kit/grain.png)');
  await Promise.all(['assets/kit/fabric.jpg','assets/kit/grain.png'].map(s=>loadImg(s).catch(()=>{throw Error(`缺模板库纹理 ${s}：用 scripts/new_film.mjs 建片子，或从 kit/assets 拷到 assets/kit/`);})));
- const K={F,T,warns:[],shots:[]};
+ const K={F,T,warns:[],shots:[],policy};
+ // 时政扩展（politics.js 先加载好才有这个钩子）：绑时间线，并把扩展挂到这条片的 K 上（film.js 里写 K.politics.badges）
+ if(window.KIT.politics){window.KIT.politics._bind?.(T);K.politics=window.KIT.politics;}
  const warn=m=>{K.warns.push(m);console.warn('[kit] '+m);};
  // 镜头表里的 '@...' 先全部解析一遍：哪一镜哪一处写错了，一次报出来
  function checkTimes(v,path,errs){
@@ -289,11 +297,11 @@ async function use(F){
  // ---------- 参数名查一遍：写错的参数（lable、untill）模板不认识，会被静默丢掉，看不了图的模型根本发现不了 ----------
  // 每个场景只认自己的参数：help、defaults、need 里写了的，加上模板代码里读到的 p.xxx（board 家族的代码在 def.code 里）。
  // 嵌套在 items / nodes / steps 里的字段名，对照模板代码里出现过的所有名字。note 随便写备注，'_' 开头的不查，custom 不查。
- const FREE=['scene','until','says','enter','tone','glow','dust','throughAt','throughScale','note','host','pipIn'];   // host：'pip' / 'window'，真人口播层（host.js）
+ const FREE=['scene','until','says','enter','tone','glow','dust','throughAt','throughScale','note','host','pipIn','claimIds','sourceIds'];   // host：'pip' / 'window'，真人口播层（host.js）；claimIds / sourceIds：时政片关联 editorial.json
  let VOCAB;
  async function vocab(){
   if(VOCAB!==undefined)return VOCAB;
-  const urls=[...document.scripts].map(s=>s.src).filter(s=>/\/(stage25d|film_base|moves|kit|scenes|scenes_plus|host)\.js(\?.*)?$/.test(s));
+  const urls=[...document.scripts].map(s=>s.src).filter(s=>/\/(stage25d|film_base|moves|kit|scenes|scenes_plus|host|politics)\.js(\?.*)?$/.test(s));
   try{const set=new Set();for(const u of urls){const t=await (await fetch(u)).text();for(const m of t.matchAll(/[A-Za-z_$][\w$]*/g))set.add(m[0]);}VOCAB=urls.length>=2&&set.size>500?set:null;}
   catch{VOCAB=null;}   // 双击直接打开（file://）读不到源码：这一项不查
   return VOCAB;
@@ -366,53 +374,91 @@ async function use(F){
   }
   lint(out);
   K.shots=out;
-  window.KIT_REPORT={shots:out.map(s=>({i:s.i,scene:s.scene,t0:+s.t0.toFixed(2),t1:+s.t1.toFixed(2),says:s.says,enter:s.enter})),warns:K.warns};
+  // fiction：检查虚构标记是不是真的每一段都在（不是只看 film.js 有没有声明）。
+  // 逐镜取开头/中间/末尾三点调 badgeAt，任何一点缺标记就算失败——这是 render --check 能验的那一半。
+  let fiction=null;
+  if(K.politics){
+   const on=K.politics._fictionState?.()??{on:false,text:null};
+   if(on.on){
+    const missing=[];
+    for(const s of out){
+     for(const tt of [s.t0+.05,(s.t0+s.t1)/2,Math.max(s.t0+.05,s.t1-.12)]){
+      const h=K.politics.badgeAt(tt)||'';
+      if(!/pol-fic/.test(h)){missing.push(`第 ${s.i+1} 镜 ${tt.toFixed(1)} 秒`);break;}
+     }
+    }
+    fiction={on:true,text:on.text,missing};
+    if(missing.length)warn(`虚构标记「${on.text}」有 ${missing.length} 处不在画面上（${missing.slice(0,3).join('、')}）：全片每一段都要常驻，不是只在开头`);
+   }else fiction={on:false};
+  }
+  window.KIT_REPORT={shots:out.map(s=>({i:s.i,scene:s.scene,t0:+s.t0.toFixed(2),t1:+s.t1.toFixed(2),says:s.says,enter:s.enter})),warns:K.warns,policy,fiction};
   return out;
  };
  // 整片的提醒（不是禁令：每一条答得上"为什么这里就该这样"就留着）
+ // 两套策略共用"实质错误"那一半（空镜头、没写 says、占位图、时长）；财经审美配额（真素材占比、滚数、酒红底、同一家公司同色）
+ // 只在 upstream 下查，politics 换成"这一镜的事实有没有落在 editorial 里"的检查（由 check_editorial.py 做，这里只看画面侧）。
  function lint(out){
-  const dur=F.T.duration;
+  const dur=F.T.duration,up=policy!=='politics';
   out.forEach((s,i)=>{
    const tag=`第 ${i+1} 镜（${s.scene}）`,d=s.t1-s.t0,def=SCENES[s.scene];
    if(!s.says)warn(`${tag}没写 says：这一镜让观众多懂了什么？说不出来就重想这一镜`);
    if(def.minDur&&d<def.minDur)warn(`${tag}只有 ${d.toFixed(1)} 秒，${s.scene} 至少要 ${def.minDur} 秒观众才看得清`);
-   const beats=def.beats?def.beats(s.p):0;
-   if(d>6.5&&beats<1)warn(`${tag}有 ${d.toFixed(1)} 秒，中间没有新的落点（steps）：观众会走神，拆成两镜，或者加一两个 step`);
+   if(d>6.5&&!up&&!s.p.claimIds&&!s.p.sourceIds)warn(`${tag}有 ${d.toFixed(1)} 秒没有落点：时政片里长镜头可以留（主持论证、读证据），但要么挂 claimIds / sourceIds 说明这一镜在讲哪条事实，要么加一两个 step`);
+   else if(d>6.5&&up){const beats=def.beats?def.beats(s.p):0;
+    if(beats<1)warn(`${tag}有 ${d.toFixed(1)} 秒，中间没有新的落点（steps）：观众会走神，拆成两镜，或者加一两个 step`);}
    if(i>=2&&out[i-1].scene===s.scene&&out[i-2].scene===s.scene)warn(`第 ${i-1}–${i+1} 镜连着三个 ${s.scene}：同一种画面连着出现，观众会腻；能合成一个场景的多个 steps 就合`);
    if(i>=1&&s.enter!=='cut'&&s.enter===out[i-1].enter)warn(`第 ${i}、${i+1} 镜连着用 enter:'${s.enter}'：同一种接法连用，观众会看出套路`);
    if(s.enter.startsWith('push')&&s.scene!=='person')warn(`${tag}用了 push（横推）：横推是"换一个并列的主角来说"（人换人最典型，两镜都是 person 最稳；公司换公司、并列的两件事也算）。这一镜是换主角吗？是就留着，不是就改 cut 或 blur`);
-   const ph=[...scanImgs(s.p)].filter(x=>x.includes('assets/kit/ph/'));if(ph.length)warn(`${tag}还在用 ${ph.length} 个占位素材（assets/kit/ph/）：成片之前换成真素材`);
+   const ph=[...scanImgs(s.p)].filter(x=>x.includes('assets/kit/ph/'));if(ph.length)warn(`${tag}还在用 ${ph.length} 个占位素材（assets/kit/ph/）：成片之前换成真素材（时政片同样不许留占位图）`);
   });
-  const rolls=out.filter(s=>s.p.roll||s.p.total||(s.p.steps??[]).some(x=>x.roll)).length;
-  if(rolls>2)warn(`全片有 ${rolls} 处滚数（number.roll、chart.total、board 的 roll）：只在"累加"本身就是意思的时候滚，一条片一两次`);
-  const wine=out.filter((s,i)=>s.p.tone==='wine'&&!(i&&out[i-1].p.tone==='wine')).length;
-  if(wine>1)warn(`全片有 ${wine} 段酒红底（tone:'wine'）：酒红一条片最多一段，留给"算总账 / 亏钱"那一段，其余用 navy`);
+  if(up){
+   const rolls=out.filter(s=>s.p.roll||s.p.total||(s.p.steps??[]).some(x=>x.roll)).length;
+   if(rolls>2)warn(`全片有 ${rolls} 处滚数（number.roll、chart.total、board 的 roll）：只在"累加"本身就是意思的时候滚，一条片一两次`);
+   const wine=out.filter((s,i)=>s.p.tone==='wine'&&!(i&&out[i-1].p.tone==='wine')).length;
+   if(wine>1)warn(`全片有 ${wine} 段酒红底（tone:'wine'）：酒红一条片最多一段，留给"算总账 / 亏钱"那一段，其余用 navy`);
+  }else{
+   // 时政片：票数 / 席位滚数仍然要有理由——它演的是"一边还在增加"，不是煽情
+   const rolls=out.filter(s=>s.p.roll||s.p.total||(s.p.steps??[]).some(x=>x.roll)).length;
+   if(rolls>2)warn(`全片有 ${rolls} 处滚数：时政片里滚数只在"票在增加、席次在累加"时用；各路民调的数字不滚（它不是累加）`);
+  }
   // 开口要快
   const b0=F.T.beats?.[0];
   if(b0&&b0.start>.5)warn(`第一句 ${b0.start.toFixed(2)} 秒才开口：0.5 秒内就要开口（script.json 的 pre 不超过 0.35）`);
   else if((F.T.pre??0)>.35)warn(`script.json 的 pre 是 ${F.T.pre}：开头留白不超过 0.35 秒`);
   // 真素材要够：原版一半左右的画面是实拍、新闻原文、当事人。只用了占位图（assets/kit/ph/）的镜头不算
-  const onlyPh=s=>{const im=[...scanImgs(s.p)];return im.length>0&&im.every(x=>x.includes('assets/kit/ph/'));};
-  const real=s=>!onlyPh(s)&&(['footage','montage','frames','popup','person','desk','device'].includes(s.scene)||(s.scene==='article'&&s.p.img)||(['title','statement'].includes(s.scene)&&A(s.p.items).length)||(s.scene==='profile'&&(s.p.img||s.p.photo))||(s.scene==='quote'&&s.p.who?.photo));
-  const nr=out.filter(real).length;
-  if(out.length>=5&&nr<out.length*.4)warn(`真素材的镜头只有 ${nr}/${out.length}（footage、person、desk、article 截图、montage、frames……；只用了占位图的不算）：少于四成就会"全是图形"，原版一半左右是实拍、原文和当事人`);
+  if(up){
+   const onlyPh=s=>{const im=[...scanImgs(s.p)];return im.length>0&&im.every(x=>x.includes('assets/kit/ph/'));};
+   const real=s=>!onlyPh(s)&&(['footage','montage','frames','popup','person','desk','device'].includes(s.scene)||(s.scene==='article'&&s.p.img)||(['title','statement'].includes(s.scene)&&A(s.p.items).length)||(s.scene==='profile'&&(s.p.img||s.p.photo))||(s.scene==='quote'&&s.p.who?.photo));
+   const nr=out.filter(real).length;
+   if(out.length>=5&&nr<out.length*.4)warn(`真素材的镜头只有 ${nr}/${out.length}（footage、person、desk、article 截图、montage、frames……；只用了占位图的不算）：少于四成就会"全是图形"，原版一半左右是实拍、原文和当事人`);
+  }else{
+   // 时政片不数占比（主持长论证、读原文都可能占很久），但证据要有人签：全片至少一镜挂了 sourceIds
+   const withSrc=out.filter(s=>A(s.p.sourceIds).length).length;
+   if(out.length>=5&&!withSrc)warn(`全片没有一镜写 sourceIds：时政片每一处事实都要能追到 editorial.json 的来源，至少在证据镜上挂 sourceIds`);
+  }
   // 同一家公司全片同一个颜色
-  const seen={},note=(name,color,i)=>{if(!name||!color)return;const k=String(name).trim(),cc=col(color);((seen[k]??={})[cc]??=[]).push(i+1);};
-  out.forEach((s,i)=>{const p=s.p;for(const n of [...A(p.nodes),...A(p.items),...A(p.cards)])if(n&&typeof n==='object')note(n.name??n.title,n.color,i);
-   note(p.left?.title,p.left?.color,i);note(p.right?.title,p.right?.color,i);note(p.who?.name,p.who?.color,i);if(s.scene==='profile')note(p.name,p.color,i);});
-  for(const k in seen){const cs=Object.keys(seen[k]);if(cs.length>1)warn(`「${k}」在不同镜头里用了 ${cs.length} 种颜色（${cs.map(cc=>`${cc}：第 ${[...new Set(seen[k][cc])].join('、')} 镜`).join('；')}）：同一家公司全片同一个颜色，color 直接写公司名最稳`);}
+  if(up){
+   const seen={},note=(name,color,i)=>{if(!name||!color)return;const k=String(name).trim(),cc=col(color);((seen[k]??={})[cc]??=[]).push(i+1);};
+   out.forEach((s,i)=>{const p=s.p;for(const n of [...A(p.nodes),...A(p.items),...A(p.cards)])if(n&&typeof n==='object')note(n.name??n.title,n.color,i);
+    note(p.left?.title,p.left?.color,i);note(p.right?.title,p.right?.color,i);note(p.who?.name,p.who?.color,i);if(s.scene==='profile')note(p.name,p.color,i);});
+   for(const k in seen){const cs=Object.keys(seen[k]);if(cs.length>1)warn(`「${k}」在不同镜头里用了 ${cs.length} 种颜色（${cs.map(cc=>`${cc}：第 ${[...new Set(seen[k][cc])].join('、')} 镜`).join('；')}）：同一家公司全片同一个颜色，color 直接写公司名最稳`);}
+  }
   const nst=out.filter(s=>s.scene==='statement').length;if(nst>3)warn(`全片 ${nst} 句金句（statement）：一条片两三次，多了就不金了`);
   const nch=out.filter(s=>s.scene==='title'&&s.p.kind==='chapter').length;if(nch>3)warn(`全片 ${nch} 张章节卡：一条片最多三张`);
   const kinds=new Set(out.map(s=>s.scene));
-  if(dur>40&&kinds.size<4)warn(`全片只用了 ${kinds.size} 种场景（${[...kinds].join('、')}）：画面太单一`);
+  // 时政片：场景种类是提示不是配额（主持论证和读证据本来就长），只提醒不逼着凑
+  if(up){if(dur>40&&kinds.size<4)warn(`全片只用了 ${kinds.size} 种场景（${[...kinds].join('、')}）：画面太单一`);}
+  else if(dur>40&&kinds.size<3)warn(`全片只用了 ${kinds.size} 种场景（${[...kinds].join('、')}）：时政片可以比财经片少换花样，但连着都是同一种画面还是会腻`);
   if(out[0]&&out[0].t1>8)warn(`第一镜到 ${out[0].t1.toFixed(1)} 秒才换：开头要快，第一句话说完就进主体`);
  }
- // 整帧外面再包一层：暗角 + 每帧换位置的颗粒
- K.go=()=>F.go({frame:h=>{const f=Math.round((FB.cur.t??0)*30);return h+`<div class="k-vig" style="z-index:85"></div><div class="k-grain" style="z-index:86;background-position:${(f*137)%360}px ${(f*71)%360}px"></div>`;}});
+ // 整帧外面再包一层：暗角 + 每帧换位置的颗粒 + 时政片的来源/性质角标
+ // 角标挂在 frame 层（不在 cam 里），所以镜头推拉摇移它不动；位置在安全区内、字幕带以上；字幕不受影响
+ K.go=g=>F.go({...(g??{}),frame:h=>{const f=Math.round((FB.cur.t??0)*30),mark=window.KIT?.politics?.badgeAt?.(FB.cur.t??0)??'';
+  return h+`<div class="k-vig" style="z-index:85"></div><div class="k-grain" style="z-index:86;background-position:${(f*137)%360}px ${(f*71)%360}px"></div>`+mark;}});
  return K;
 }
 
-window.KIT={use,scene,SCENES,FONTS:['500 60px Mi','600 60px Mi','60px Shu','60px Num','600 30px Mont','italic 600 30px Mont'],
+window.KIT={use,scene,SCENES,FONTS:['500 60px Mi','600 60px Mi','60px Shu','60px Num','600 30px Mont','italic 600 30px Mont'],POLICIES,
  C,IO,E,EI,lerp,f1,f2,f3,SAFE,COLORS,BRAND,TONE,col,rgb,mixc,alpha,shade,num,full,fmtN,numText,numHTML,unitHTML,textW,fitPx,megaW,megaFit,vw,FAM,timer,track,appear,
  fit,unionBox,moveDur,camSeq,fx,stage,disc,card,tag,pill,mark,label,bignum,brow,frame,edges,qpt,person,halo,measure,loadImg,MEAS,ENTERS,hashf,dust,MAP,lonlat,cssScale};
 })();

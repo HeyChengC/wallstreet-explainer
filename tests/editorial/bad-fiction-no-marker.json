@@ -1,0 +1,1 @@
+{"config":{"region":"general","stance":"neutral","styles":["objective"],"content_mode":"fiction"},"sources":[{"id":"s1","url":"x.md","publisher":"測試","title":"T","source_type":"synthetic","published_at":null,"accessed_at":"2026-11-06","note":"测试材料"}],"claims":[{"id":"c1","kind":"fiction","text":"演绎","beat_ids":[],"source_ids":["s1"]}]}

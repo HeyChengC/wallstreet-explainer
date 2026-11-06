@@ -179,8 +179,10 @@ const K2=KIT;
 
 // enter:'grow' / 'drop'：在 K.film 里接上一镜（kit.js 的 wrapEnter 不认识这两个，这里先把它们换成 cut，再自己包）
 const film1=KIT.use;
-KIT.use=async F=>{
- const K=await film1(F);
+// 第二个参数（检查策略 {policy:'politics'} 等）必须原样透传：index.html 不论有没有主持都加载这个文件，
+// 吞掉它会让 render --check-policy politics 静默退回 upstream。
+KIT.use=async (F,o)=>{
+ const K=await film1(F,o);
  const film0=K.film;
  K.film=async list=>{
   const ent=list.map(sp=>sp&&['grow','drop'].includes(sp.enter)?sp.enter:null);
