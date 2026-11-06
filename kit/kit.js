@@ -287,6 +287,9 @@ async function use(F,o={}){
  const K={F,T,warns:[],shots:[],policy};
  // 时政扩展（politics.js 先加载好才有这个钩子）：绑时间线，并把扩展挂到这条片的 K 上（film.js 里写 K.politics.badges）
  if(window.KIT.politics){window.KIT.politics._bind?.(T);K.politics=window.KIT.politics;}
+ // 区域主题（regional.js）：港台字体栈、语音参数、字幕用词。
+ // regional.js 挂的是可调用函数，已经带 current / voice / words / hanFont，直接取来用。
+ if(window.KIT.regional)K.regional=window.KIT.regional;
  const warn=m=>{K.warns.push(m);console.warn('[kit] '+m);};
  // 镜头表里的 '@...' 先全部解析一遍：哪一镜哪一处写错了，一次报出来
  function checkTimes(v,path,errs){
@@ -301,7 +304,7 @@ async function use(F,o={}){
  let VOCAB;
  async function vocab(){
   if(VOCAB!==undefined)return VOCAB;
-  const urls=[...document.scripts].map(s=>s.src).filter(s=>/\/(stage25d|film_base|moves|kit|scenes|scenes_plus|host|politics)\.js(\?.*)?$/.test(s));
+  const urls=[...document.scripts].map(s=>s.src).filter(s=>/\/(stage25d|film_base|moves|kit|scenes|scenes_plus|host|politics|regional)\.js(\?.*)?$/.test(s));
   try{const set=new Set();for(const u of urls){const t=await (await fetch(u)).text();for(const m of t.matchAll(/[A-Za-z_$][\w$]*/g))set.add(m[0]);}VOCAB=urls.length>=2&&set.size>500?set:null;}
   catch{VOCAB=null;}   // 双击直接打开（file://）读不到源码：这一项不查
   return VOCAB;
@@ -376,10 +379,14 @@ async function use(F,o={}){
   K.shots=out;
   // fiction：检查虚构标记是不是真的每一段都在（不是只看 film.js 有没有声明）。
   // 逐镜取开头/中间/末尾三点调 badgeAt，任何一点缺标记就算失败——这是 render --check 能验的那一半。
+  // display:'no-badges'（私人研究预览）时角标整体关闭，这里如实报告"已关闭"，不算通过也不算失败。
   let fiction=null;
   if(K.politics){
    const on=K.politics._fictionState?.()??{on:false,text:null};
-   if(on.on){
+   const disp=K.politics._display?.()??'full';
+   if(on.on&&disp==='no-badges'){
+    fiction={on:true,text:on.text,display:disp,suppressed:true,missing:[]};
+   }else if(on.on){
     const missing=[];
     for(const s of out){
      for(const tt of [s.t0+.05,(s.t0+s.t1)/2,Math.max(s.t0+.05,s.t1-.12)]){
@@ -387,9 +394,9 @@ async function use(F,o={}){
       if(!/pol-fic/.test(h)){missing.push(`第 ${s.i+1} 镜 ${tt.toFixed(1)} 秒`);break;}
      }
     }
-    fiction={on:true,text:on.text,missing};
+    fiction={on:true,text:on.text,display:disp,missing};
     if(missing.length)warn(`虚构标记「${on.text}」有 ${missing.length} 处不在画面上（${missing.slice(0,3).join('、')}）：全片每一段都要常驻，不是只在开头`);
-   }else fiction={on:false};
+   }else fiction={on:false,display:disp};
   }
   window.KIT_REPORT={shots:out.map(s=>({i:s.i,scene:s.scene,t0:+s.t0.toFixed(2),t1:+s.t1.toFixed(2),says:s.says,enter:s.enter})),warns:K.warns,policy,fiction};
   return out;

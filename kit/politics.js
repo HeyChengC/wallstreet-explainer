@@ -55,7 +55,18 @@ K.politics.fiction=(on,text)=>{FICTION=on!==false;if(text)FICTION_TEXT=String(te
 K.politics._fictionState=()=>({on:FICTION,text:FICTION_TEXT});
 let FICTION=false, FICTION_TEXT='虛構演繹 · 人物與情節均為虛構';
 // 某一时刻要显示的角标（帧层调用；只读，不改状态）
+// 显示模式（K.politics.display）：
+//   'full'          全部显示：来源 / 性质 / 虚构标记（默认，公开成片用）
+//   'no-badges'     全关：来源、性质、虚构标记都不上屏，出处留 editorial.json（私人研究预览）
+// 两种模式都**不影响** editorial.json 的校验：事实与分析的区分始终记在文件里。
+K.politics.display=mode=>{
+ if(!['full','no-badges'].includes(mode))throw Error(`K.politics.display 只有 full / no-badges，现在是 '${mode}'`);
+ DISPLAY=mode;return K;
+};
+let DISPLAY='full';
+K.politics._display=()=>DISPLAY;
 K.politics.badgeAt=t=>{
+ if(DISPLAY==='no-badges')return '';
  let out='',fic=FICTION;
  for(const b of BADGES){
   if(t<b.from||t>=b.until)continue;

@@ -10,12 +10,17 @@ import {stub} from './timeline_stub.mjs';
 
 const SK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2), dst = args.find(a => !a.startsWith('--')), DEMO2 = args.includes('--demo2'), DEMO = DEMO2 || args.includes('--demo'), SYNC = args.includes('--sync');
-const POL = args.includes('--politics');
+// --region taiwan|hongkong：港台本地版起点（字体、语音、繁体/粤语正文、无角标、封面脚手架）
+const REGION = (() => { const i = args.indexOf('--region'); return i >= 0 ? args[i + 1] : null; })();
+if (REGION && !['taiwan', 'hongkong'].includes(REGION)) { console.error(`--region 只能是 taiwan / hongkong，现在是 '${REGION}'`); process.exit(1); }
+const LOCAL = !!REGION;
+// --region 隐含 --politics（本地版都是时政片）。POL 在 REGION 之后算，不靠 args.push 影响已算好的值。
+const POL = args.includes('--politics') || LOCAL;
 if (!dst) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(0, 6).join('\n')); process.exit(1); }
 const D = path.resolve(dst);
 let local = {}; try { local = JSON.parse(fs.readFileSync(path.join(SK, 'scripts/local.json'), 'utf8')); } catch {}
 const FONTS = path.resolve(local.fonts_dir ?? path.join(SK, 'fonts'));
-const LIB = ['scripts/stage25d.js', 'scripts/film_base.js', 'scripts/moves.js', 'kit/kit.js', 'kit/scenes.js', 'kit/scenes_plus.js', 'kit/host.js', 'kit/politics.js', 'kit/kit.css'];
+const LIB = ['scripts/stage25d.js', 'scripts/film_base.js', 'scripts/moves.js', 'kit/kit.js', 'kit/scenes.js', 'kit/scenes_plus.js', 'kit/host.js', 'kit/politics.js', 'kit/regional.js', 'kit/local_native.js', 'kit/kit.css'];
 const cp = (a, b) => { fs.mkdirSync(path.dirname(b), {recursive: true}); fs.copyFileSync(a, b); };
 
 function copyLib() {
@@ -45,9 +50,16 @@ if (SYNC) {
 }
 if (fs.existsSync(D) && fs.readdirSync(D).length) { console.error(`目标已存在且不是空的：${D}`); process.exit(1); }
 fs.mkdirSync(D, {recursive: true});
-const src = path.join(SK, DEMO2 ? 'kit/demo2' : DEMO ? 'kit/demo' : POL ? 'starter-politics' : 'starter');
+// 起点目录：--region 直接用两地自己的 starter（真繁体/粤语正文 + K.regional + no-badges）
+const src = LOCAL ? path.join(SK, 'starter-politics', REGION)
+  : path.join(SK, DEMO2 ? 'kit/demo2' : DEMO ? 'kit/demo' : POL ? 'starter-politics' : 'starter');
 cp(path.join(SK, 'starter/index.html'), path.join(D, 'index.html'));
-cp(path.join(SK, 'starter/film.css'), path.join(D, 'film.css'));
+// 字幕样式：两地各一份（900 字重 + 黑描边 + paint-order），不是上游的 60px 500
+if (LOCAL) {
+  cp(path.join(SK, 'starter-politics', `film.${REGION}.css`), path.join(D, 'film.css'));
+} else {
+  cp(path.join(SK, 'starter/film.css'), path.join(D, 'film.css'));
+}
 cp(path.join(src, 'film.js'), path.join(D, 'film.js'));
 cp(path.join(src, 'script.json'), path.join(D, 'script.json'));
 // 时政起点多两样：事实底稿和它引用的本地材料（随 starter-politics 一起拷）
@@ -55,7 +67,16 @@ if (POL) {
   cp(path.join(src, 'editorial.json'), path.join(D, 'editorial.json'));
   const docs = path.join(src, 'assets', 'docs');
   if (fs.existsSync(docs)) for (const f of fs.readdirSync(docs)) cp(path.join(docs, f), path.join(D, 'assets', 'docs', f));
-  cp(path.join(src, 'film.css'), path.join(D, 'film.css'));
+}
+// --region：语音已经在 starter 的 script.json 里写死成该地区，这里只做校验，不改写
+if (LOCAL) {
+  const S = JSON.parse(fs.readFileSync(path.join(D, 'script.json'), 'utf8'));
+  const want = REGION === 'hongkong' ? /^zh-HK-/ : /^zh-TW-/;
+  if (!want.test(S.voice ?? '')) {
+    console.error(`起点脚本的 voice 是 ${S.voice}，不符合 ${REGION}（要 ${REGION === 'hongkong' ? 'zh-HK-*' : 'zh-TW-*'}）`);
+    process.exit(1);
+  }
+  console.log(`  语音：${S.voice}（${REGION}）；台词是本地正文（${REGION === 'hongkong' ? '书面粤语' : '台湾国语'}），改 text 后重跑 temp_voice.py`);
 }
 copyLib(); linkFonts();
 for (const d of ['assets/img', 'assets/clips', 'assets/cut', 'voice', 'out']) fs.mkdirSync(path.join(D, d), {recursive: true});

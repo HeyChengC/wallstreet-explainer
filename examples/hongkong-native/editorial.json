@@ -1,0 +1,36 @@
+{
+ "config": {
+  "region": "hongkong", "stance": "neutral", "styles": ["objective"], "emotion": 2,
+  "profanity": "none", "content_mode": "factual", "language": "yue-HK",
+  "overlays": "none", "use_context": "private-study",
+  "duration_seconds": 42, "as_of": "2026-11-06T16:00:00+08:00",
+  "note": "示例片：2024 年垃圾徵費回看。官方照片与答问全文来自政府新闻公报 2024-05-27；画面 overlays:none（私人研究），出处只在本文档里。"
+ },
+ "sources": [
+  {"id": "s1", "url": "https://www.info.gov.hk/gia/general/202405/27/P2024052700613.htm",
+   "publisher": "香港特區政府新聞公報", "title": "環境及生態局局長及政務司副司長就垃圾收費會見傳媒答問全文",
+   "published_at": "2024-05-27", "accessed_at": "2026-11-06", "source_type": "gov-press"},
+  {"id": "s2", "url": "https://gia.info.gov.hk/general/202405/27/P2024052700613_photo_1273097.jpg",
+   "publisher": "香港特區政府新聞公報", "title": "記者會官方照片（左：卓永興 政務司副司長；右：謝展寰 環境及生態局局長）",
+   "published_at": "2024-05-27", "accessed_at": "2026-11-06", "source_type": "gov-press"}
+ ],
+ "claims": [
+  {"id": "c1", "kind": "fact",
+   "text": "垃圾收費原定 2024 年 4 月 1 日推行，先押後至 8 月 1 日，5 月 27 日再宣布暫緩。",
+   "beat_ids": ["b01", "b02"], "source_ids": ["s1"], "event_date": "2024-05-27"},
+  {"id": "c2", "kind": "quote",
+   "text": "政府說社會整體準備未夠、回收配套仍要加強。",
+   "beat_ids": ["b03", "b04"], "source_ids": ["s1"], "speaker": "環境及生態局局長 謝展寰"},
+  {"id": "c3", "kind": "fact",
+   "text": "答問列出具體投入：播放萬多次宣傳片、四千多張海報、「綠在區區」由 30 多間擴展、未來一年廚餘收集設施倍增。",
+   "beat_ids": ["b05", "b06"], "source_ids": ["s1"],
+   "reasoning": null},
+  {"id": "c4", "kind": "quote",
+   "text": "記者追問問責，政務司副司長回應局長「盡心盡力」推動。",
+   "beat_ids": ["b07"], "source_ids": ["s1"], "speaker": "政務司副司長 卓永興"},
+  {"id": "c5", "kind": "analysis",
+   "text": "爭點不是「有沒有做」，而是既有投入怎樣對應到可驗證的結果指標與下一步時間表。",
+   "beat_ids": ["b08", "b09"], "source_ids": ["s1"],
+   "reasoning": "原文確實給了宣傳與回收點的數量與擴展方向（答問第 162、170 段）。所以評論不應該說「沒有交代」，而應該要求把既有投入對應到可驗證的結果指標與時間表；這是方法上的要求，不是指控官員沒做事。"}
+ ]
+}

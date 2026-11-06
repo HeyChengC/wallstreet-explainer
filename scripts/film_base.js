@@ -37,18 +37,49 @@ async function init(o={}){
  await Promise.all((o.preload??[]).map(n=>new Promise(r=>{const im=new Image();im.onload=im.onerror=r;im.src=A+n;})));
  await Promise.all((o.fonts??[]).map(f=>document.fonts.load(f)));
 
- // 字幕：一句超过 maxLen 个字就按逗号拆成短语，卡着字的时刻替换；原声插段用它自己的中文字幕
+ // 字幕：一句超过 maxLen 个字就拆短语，卡着字的时刻替换；原声插段用它自己的中文字幕
+ // 拆法：先按逗号/问号/冒号切；**没有标点的长句也按字数硬切**（本地版本字幕短，一行放不下 18 字）。
+ // subMax 可由 film.js 传（港台版 8–15），subLines=1 表示单行。
  const maxLen=o.subMax??20;
  const SUBS=T.beats.map(b=>({start:b.start,end:b.end+.15,text:b.text,id:b.id}));
  for(const i of T.inserts||[])for(const p of i.parts)SUBS.push({start:p.start,end:p.end,text:p.sub,id:null});
  SUBS.sort((a,b)=>a.start-b.start);for(let i=0;i<SUBS.length-1;i++)SUBS[i].end=Math.min(SUBS[i].end,SUBS[i+1].start);
+ function chunksOf(text,max){
+  if(text.length<=max)return [{text,at:0}];
+  // 1) 先按标点切
+  const segs=[];let buf='';
+  for(const ch of text){
+   buf+=ch;
+   if(/[，、：；？！,;:?!]/.test(ch)){segs.push(buf);buf='';}
+  }
+  if(buf)segs.push(buf);
+  // 2) 每段再按 max 硬切（无标点长句也要拆；优先在空格处断，不切断英文单词）
+  const out=[];
+  for(const s of segs){
+   if(s.length<=max){out.push(s);continue;}
+   let rest=s;
+   while(rest.length>max){
+    let cut=max;
+    const win=rest.slice(Math.max(1,max-4),Math.min(rest.length,max+4));
+    const sp=win.lastIndexOf(' ');
+    if(sp>=0)cut=Math.max(1,max-4)+sp+1;
+    out.push(rest.slice(0,cut));rest=rest.slice(cut);
+   }
+   if(rest)out.push(rest);
+  }
+  // 3) 记每块在这句里的起始字序号（用来挂时刻）
+  let acc=0;
+  return out.map(t=>{const r={text:t,at:acc};acc+=t.length;return r;});
+ }
+ const CH={};
  function subText(s,t){
   if(s.text.length<=maxLen||!s.id)return s.text.replace(/[。]$/,'');
-  const parts=s.text.split(/(?<=[，？：])/).filter(Boolean),chunks=[];let cur='';
-  for(const p of parts){if((cur+p).length>maxLen&&cur){chunks.push(cur);cur=p}else cur+=p}if(cur)chunks.push(cur);
-  const bb=BT[s.id];let idx=0,acc=0;for(let i=0;i<chunks.length;i++){if(t>=bb.chars[acc][1]-.05)idx=i;acc+=chunks[i].length}
-  return chunks[idx].replace(/[，。：]$/,'');}
- const subAt=t=>{const s=SUBS.find(x=>t>=x.start&&t<x.end);return s?{text:s.text,html:`<div class="sub">${lat(subText(s,t))}</div>`}:null;};
+  const chunks=CH[s.id]??(CH[s.id]=chunksOf(s.text,maxLen));
+  const bb=BT[s.id];let idx=0;
+  for(let i=0;i<chunks.length;i++){if(t>=bb.chars[Math.min(chunks[i].at,bb.chars.length-1)][1]-.05)idx=i;}
+  return chunks[idx].text.replace(/[，。：、；？！,;:?!]$/,'');
+ }
+ const subAt=t=>{const s=SUBS.find(x=>t>=x.start&&t<x.end);return s?{text:s.text,html:`<div class="sub">${lat(subText(s,t))}</div>`}:null};
 
  // 镜头登记：shot(起, 止, t=>这一帧的 HTML)
  const shots=[];const shot=(t0,t1,f)=>{shots.push({t0,t1,f});return f;};

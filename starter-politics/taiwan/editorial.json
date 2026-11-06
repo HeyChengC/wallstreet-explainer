@@ -1,0 +1,16 @@
+{
+ "config": {
+  "region": "taiwan",
+  "stance": "neutral",
+  "styles": ["traffic"],
+  "emotion": 2,
+  "profanity": "none",
+  "content_mode": "factual",
+  "language": "zh-TW",
+  "duration_seconds": 60,
+  "as_of": "2026-11-06T16:00:00+08:00",
+  "note": "起点模板：换成你自己的真实材料。overlays:none（private-study），出处只留在这份文件里。"
+ },
+ "sources": [],
+ "claims": []
+}

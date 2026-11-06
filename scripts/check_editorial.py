@@ -121,6 +121,10 @@ def check(doc, script_beats=None, base_dir=None, film_claims=None, source_ids=No
         err('config.emotion', f'只能是 0 / 1 / 2 / 3，现在是 {cfg["emotion"]!r}')
     if 'profanity' in cfg and cfg['profanity'] not in PROFANITY:
         err('config.profanity', f'只能是 {sorted(PROFANITY)}，现在是 {cfg["profanity"]!r}')
+    # overlays：full（画面上挂来源/性质角标）/ none（全不上屏，出处只留这份文件）
+    overlays = cfg.get('overlays', 'full')
+    if overlays not in ('full', 'none'):
+        err('config.overlays', f'只能是 full / none，现在是 {overlays!r}')
     mode = cfg.get('content_mode', 'factual')
     if mode not in CONTENT:
         err('config.content_mode', f'只能是 factual / fiction，现在是 {mode!r}')
@@ -243,6 +247,16 @@ def check(doc, script_beats=None, base_dir=None, film_claims=None, source_ids=No
         if ed not in (None, '') and not is_date(str(ed)):
             err(f'{p}.event_date', f'事件日期要写成 2026-11-06，现在是 {ed!r}（查不到就留 null，不要编）')
 
+    # ---------- 空账本：脚手架 vs 假通过 ----------
+    # 新建的起点允许 sources/claims 为空（还没填），但必须**明说**，不能让它静悄悄"通过"。
+    # 只要有台词（同目录 script.json 有 lines）却一条来源都没有，就是警告。
+    if isinstance(srcs, list) and not srcs and isinstance(cl, list) and not cl:
+        if script_beats:
+            warn('sources', f'事实底稿是空的：script.json 有 {len(script_beats)} 句台词，但没有一条来源。'
+                            '这是脚手架状态，**不能当成已核实的底稿**——填上真实 sources 和 claims 再交片')
+        else:
+            warn('sources', '事实底稿是空的（脚手架状态）；出片前要填 sources 和 claims')
+
     # ---------- beats 交叉引用 ----------
     # 优先用 script.json（真实句子）；doc 里的 beats 字段是可选的补充，不存在也不影响。
     beats = doc.get('beats')
@@ -279,14 +293,20 @@ def check(doc, script_beats=None, base_dir=None, film_claims=None, source_ids=No
     if mode == 'fiction':
         on_screen = cfg.get('fiction_marker')
         if not on_screen:
-            err('config.fiction_marker', "content_mode:'fiction' 必须写 fiction_marker（例：'虛構演繹 · 人物與情節均為虛構'），"
-                                         '它会被要求全片常驻在画面右上角')
+            # overlays:none（画面上什么都不挂）时不强制要标记文字，但要在 note 里说清这是虚构
+            if overlays == 'none':
+                if not str(cfg.get('note') or '').strip():
+                    warn('config.note', "fiction + overlays:'none'：画面上不挂虚构标记，至少要在这里写清"
+                                        "「这是虚构演绎，不外发」——别让它变成看不见的虚构")
+            else:
+                err('config.fiction_marker', "content_mode:'fiction' 必须写 fiction_marker（例：'虛構演繹 · 人物與情節均為虛構'），"
+                                             '它会被要求全片常驻在画面右上角；画面上不挂标记就写 overlays:"none" 并在 note 里交代')
         elif not str(on_screen).strip():
             err('config.fiction_marker', 'fiction_marker 不能是空字符串')
         if not any(isinstance(c, dict) and c.get('kind') == 'fiction' for c in cl):
             err('config.content_mode', "content_mode:'fiction' 但没有任何 kind:'fiction' 的 claim："
                                         '虚构片要把哪些是演绎写清楚（每条也要能追到合成来源或标 beat）')
-    elif cfg.get('fiction_marker'):
+    elif cfg.get('fiction_marker') and overlays != 'none':
         warn('config.fiction_marker', 'factual 模式写了 fiction_marker：只有虚构片才挂常驻标记，检查一下 content_mode')
     # ---------- 片子目录里的镜头表 ----------
     return E, W

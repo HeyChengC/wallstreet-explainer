@@ -8,9 +8,11 @@
 
 - **选立场，不改事实**：中立 / 偏绿 / 偏蓝 / 香港建制 / 香港泛民 / 自定义；同一份事实底稿可以出不同立场的版本，事件时间、票数、原话不动。
 - **选风格，能组合**：客观、爆料悬念、愤慨、强对立；粗口档位单独设，选愤慨不会自动加粗口。
+- **选地区，语言和画面一起变**：台湾＝繁体＋台湾国语＋Noto Sans TC Black；香港＝**书面粤语**＋粤语音色＋Noto Sans HK Black。不会拿普通话去读粤语稿。
+- **本地自媒体包装**：人物抠像大头上封面、粗描边巨字、slam/震动/漫画爆裂、80px 900 字重带黑描边的字幕。
 - **事实有账可查**：`editorial.json` 记来源和每条 claim 的性质（事实/原话/分析/未证实/虚构），`check_editorial.py` 查引用、日期、立场配置和虚构标记。
-- **画面上分得清**：固定角标显示"事实 / 原话 / 分析 / 未证实 / 虚构演绎"和来源简称，不随镜头缩放、不压字幕。
-- **虚构也能做**，但全程常驻"虚构演绎"标记，用虚构人物和机构。
+- **可以不要角标**：`overlays: none` 时画面不显示任何来源、性质、虚构、研究标签，出处只留在 `editorial.json`。
+- **虚构也能做**，但默认要求全程常驻"虚构演绎"标记，用虚构人物和机构。
 
 ## 安装
 
@@ -52,9 +54,43 @@ python -c "from rembg import new_session; new_session('isnet-general-use')"
 {"fonts_dir": "D:/path/to/fonts"}
 ```
 
-字体清单见 `kit/kit.css` 的 `@font-face`：MiSans（Regular/Medium/Semibold/Bold）、阿里妈妈数黑体、Bebas Neue、Montserrat（含 Italic）。
+**必需字体**（文件名要与 `kit/kit.css` 和 `kit/regional.js` 的 `@font-face` 对上）：
+
+| 字体 | 文件 | 用在哪 |
+|---|---|---|
+| MiSans Regular/Medium/Semibold/Bold | `MiSans-*.ttf` 或 `.otf` | 通用正文、眉题（上游默认） |
+| 阿里妈妈数黑体 | `AlimamaShuHeiTi-Bold.ttf` | 财经片巨字（**缺繁体字，港台题材不要用**） |
+| Bebas Neue | `BebasNeue-Regular.ttf` | 数字 |
+| Montserrat（含 Italic） | `Montserrat-VF.ttf` / `Montserrat-Italic-VF.ttf` | 英文小字 |
+| **Noto Sans TC Black / Bold** | `NotoSansTC-Black.otf` / `NotoSansTC-Bold.otf` | **台湾版**巨字与字幕（字重 900） |
+| **Noto Sans HK Black / Bold** | `NotoSansHK-Black.otf` / `NotoSansHK-Bold.otf` | **香港版**巨字与字幕（字重 900） |
+
+**Noto Sans TC/HK 官方来源**（开源，SIL OFL）：
+
+```powershell
+# 从 notofonts/noto-cjk 的 release 取语言子集包（每个约 33 MB）
+# https://github.com/notofonts/noto-cjk/releases/tag/Sans2.004
+#   19_NotoSansTC.zip → NotoSansTC-Black.otf / -Bold.otf
+#   20_NotoSansHK.zip → NotoSansHK-Black.otf / -Bold.otf
+# 解压后把 4 个 otf 放进 fonts_dir
+```
+
+单文件下载：`https://github.com/notofonts/noto-cjk/releases/download/Sans2.004/19_NotoSansTC.zip`
+
+**为什么必须换**：阿里妈妈数黑体缺 **142/336 个常用繁体字**（會議員選舉預算質詢報門長…），浏览器会一字一字 fallback 到 MiSans，同一句里字重和字形混排——这是"大陆模板"观感最直接的来源。Noto Sans TC/HK Black 缺 0。
 
 Playwright 装在别处就写 `"playwright_from": "<装了 playwright 的 package.json>"`。
+
+## 可选：人物抠像（封面大头）
+
+封面需要透明人物 PNG。仓库带 `scripts/cutout.py`（rembg）：
+
+```powershell
+python -m pip install rembg onnxruntime pillow
+python scripts/cutout.py assets/img/presser.jpg assets/img/person.png
+```
+
+首次运行会下载模型（约 170 MB）。**实测**：`isnet-general-use` 在灰色背景的记者会照片上会失败（整幅被当成前景），`u2net_human_seg` 效果好得多——两个都试一次，选干净的那个。抠像边缘会有背景色残留，白/浅背景的照片最好抠。
 
 ## 使用
 
@@ -70,22 +106,20 @@ Playwright 装在别处就写 `"playwright_from": "<装了 playwright 的 packag
 
 ## 三条可直接复制的调用
 
-**1. 客观风格，香港政策拆解**
+**1. 香港本地版（粤语 + 无角标）**
 
 ```
-用 political-commentary 做一条 100 秒的香港政策拆解：neutral、objective、emotion 1、不要粗口。
-选题：政府刚公布的那个交通收费方案。
-要求：先把政府公报和议会记录找出来，标清日期和出处；各方的公开说法用 stance-matrix；
-我的判断用 verdict，写清条件和下一个观察点。事实底稿先给我，我确认后再写文案。
+用 political-commentary 做一条香港时政评论：region hongkong、neutral、objective、emotion 2、不要粗口、overlays none。
+题材：2024 年垃圾徵费押后。先把政府公报原文和记者会答问找来，出处记进 editorial.json，但画面不要任何角标。
+台词必须是书面粤语（唔/嘅/咗/佢），用 zh-HK 男声。
 ```
 
-**2. 台湾议题，偏蓝强对立**
+**2. 台湾本地版（繁体 + 台湾国语）**
 
 ```
-用 political-commentary 做一条 80 秒的台湾议题评论：region taiwan、stance blue-leaning、
-styles ["adversarial","traffic"]、emotion 2、profanity none。
-把对方最强的论点原样摆出来，然后逐条反驳；不能改原话、不能改数字。
-未证实的说法标"未证实"，不做成"我们确认"。
+用 political-commentary 做一条台湾时政评论：region taiwan、stance neutral、styles ["traffic"]、emotion 2。
+题材：台北市长辩论里的金句与政见。人物用官方公开片源，裁掉台标；封面做大头 + 粗描边巨字。
+台词用台湾说法（影片/網路/立委/質詢/財源/期程），zh-TW 男声。画面不要角标。
 ```
 
 **3. 虚构剧情（要打标）**
@@ -107,16 +141,26 @@ node scripts/render.mjs --dir <片子> --check-policy politics --sheet          
 
 ## 示例片
 
-`examples/politics-demo/`：虚构海岚市的一条 123 秒片，8 镜，演示三个新场景 + 角标 + 事实分析区分。不需要联网，全部素材自绘或本地虚构文件（`assets/docs/` 里三份 md 都标了是测试材料）。
+**当前两版（港台本地风格，v0.2）**
 
-跑起来：
+| 示例 | 时长 | 内容 | 看点 |
+|---|---|---|---|
+| [`examples/taiwan-native`](examples/taiwan-native) | 27.6 秒 | 台北市長辯論：金句怎麼搶聲量 | 红黄撞色大头封面、粗描边巨字、slam/震动/爆裂、80px 900 字重繁中字幕、**无角标** |
+| [`examples/hongkong-native`](examples/hongkong-native) | 42.3 秒 | 2024 垃圾徵費押後，邊個交代 | **书面粤语正文 + zh-HK 音色**、官员抠像封面、原片裁掉立法会 logo、无角标 |
+
+两版都带 `cover_1280.jpg`（封面成品）、`cover.js`（封面版式源）、`script.json`、`film.js`、`editorial.json`、`film.css`，以及裁好的素材图。**原视频不随仓库分发**（第三方版权），`editorial.json` 里记了来源 URL。
+
+复现封面：
 
 ```powershell
-node scripts/new_film.mjs /tmp/politics-demo --politics     # 建空片
-# 把 examples/politics-demo 的 script.json / film.js / editorial.json / assets/docs 拷进去
-python scripts/check_editorial.py /tmp/politics-demo/editorial.json
-node scripts/render.mjs --dir /tmp/politics-demo --check-policy politics --sheet
+node scripts/render.mjs --dir examples/hongkong-native --page cover.html --cover
 ```
+
+> 注意：`examples/` 里的片子没有 `lib/` 和 `fonts/`（那是本机路径，不进仓库）。要跑完整渲染，先 `node scripts/new_film.mjs <新目录> --region hongkong` 建一个片子，再把示例的 `film.js` / `script.json` / `editorial.json` / `assets/` 拷进去。
+
+**历史示例（v0.1，财经风格）**
+
+- [`examples/politics-demo`](examples/politics-demo)：虚构海岚市，99 秒，8 镜，演示 `stance-matrix` / `event-timeline` / `verdict` 三个时政场景 + 来源角标 + 虚构标记。这是**旧版**（深蓝织物底、小卡片、有角标），保留作历史与低强度风格参考。
 
 ## 和上游的关系
 

@@ -1,0 +1,24 @@
+{
+ "config": {
+  "region": "taiwan", "stance": "neutral", "styles": ["traffic"], "emotion": 2,
+  "profanity": "none", "content_mode": "factual", "language": "zh-TW",
+  "overlays": "none", "use_context": "private-study",
+  "duration_seconds": 28, "as_of": "2026-11-06T16:00:00+08:00",
+  "note": "示例片：素材來自 TVBS 官方公開片 js1T-FUwWI4 的 6:30 段落，已裁掉台標與下欄。畫面 overlays:none（私人研究），出處只在本文檔裡。"
+ },
+ "sources": [
+  {"id": "s1", "url": "https://www.youtube.com/watch?v=js1T-FUwWI4", "publisher": "TVBS 網路直播",
+   "title": "台北市長候選人電視辯論會（沈伯洋政見申論段）", "published_at": null,
+   "accessed_at": "2026-11-06", "source_type": "press",
+   "note": "官方公開片；僅用於私人研究，原視頻不隨倉庫分發。"}
+ ],
+ "claims": [
+  {"id": "c1", "kind": "quote",
+   "text": "沈伯洋開場先祝蔣萬安身體健康，接著說要把麥克風交給市民。",
+   "beat_ids": ["b02"], "source_ids": ["s1"], "speaker": "沈伯洋（台北市長候選人）"},
+  {"id": "c2", "kind": "analysis",
+   "text": "金句好剪，但看市政要看財源、期程、權責；聲量大小不等於把市政說清楚。",
+   "beat_ids": ["b03", "b04", "b05", "b06", "b07"], "source_ids": ["s1"],
+   "reasoning": "這是方法判斷，不是對整場辯論的資料審計：本片只取了申論段的 90 秒畫面，沒有逐字核對全場是否出現具體預算數字，所以結論停在「要拿出這三樣來比」，不宣稱候選人全場都缺數據。"}
+ ]
+}

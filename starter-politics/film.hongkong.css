@@ -1,0 +1,23 @@
+/* 港台本地版：字幕就是第一主角。
+   —— 900 字重、72–88px、黑描边 + paint-order、白字，关键词可刷黄。
+   上游默认是 MiSans Medium 500 / 60px / 带柔阴影；本地说法要"电视新闻感"，字重和描边都得改。 */
+html,body{margin:0;background:#000;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:#06070a;
+  font-family:NotoHKH,'Noto Sans HK','Microsoft JhengHei',Mi,MiSans,sans-serif;color:#fff}
+#stage *{box-sizing:border-box}
+.L{position:absolute}
+.full{position:absolute;inset:0}
+
+/* 字幕：底部居中，最多两行；900 字重 + 黑描边（paint-order 保证填色不被描边吃掉）。
+   盒子顶在 y=900（字幕带），字号 80px，行高 1.18，两行不越 1080−24。
+   关键词可以用 <b> 刷黄（K.regional 的 subHl 会插）。 */
+.sub{position:absolute;left:0;right:0;bottom:42px;z-index:90;text-align:center;
+  font-family:NotoHKH,'Noto Sans HK','Microsoft JhengHei',Mi,MiSans,sans-serif;
+  font-weight:900;font-size:80px;line-height:1.18;letter-spacing:1px;color:#fff;
+  -webkit-text-stroke:7px #000;paint-order:stroke fill;
+  text-shadow:4px 4px 0 #000;padding:0 60px}
+.sub b{color:#ffd60a;-webkit-text-stroke:7px #000;paint-order:stroke fill}
+.sub .lat{font-family:Mont,Montserrat,sans-serif;font-style:normal;font-weight:700;font-size:.92em;letter-spacing:0;margin:0 .06em}
+/* 长句：两行时第二行稍微缩一点，避免末行比首行宽 */
+.sub.two{font-size:72px}
+

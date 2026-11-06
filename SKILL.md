@@ -15,16 +15,58 @@ description: 港台时政评论短片（1–3 分钟、16:9）。先选地区（
 
 | 维度 | 取值 | 作用 |
 |---|---|---|
-| `region` | `general` / `taiwan` / `hongkong` | 议题语境。不推断观看者身份 |
+| `region` | `general` / `taiwan` / `hongkong` | 议题语境。**选了港台就同时定下语言、字体、字幕样式**。不推断观看者身份 |
 | `stance` | `neutral`；台湾 `green-leaning` / `blue-leaning`；香港 `establishment-leaning` / `pan-democratic-leaning`；`custom` + `stance_note` | 判断重点和价值标准。**不是**改写事实的开关 |
 | `styles` | `objective` / `traffic` / `outrage` / `adversarial`，可组合，第一项为主 | 开头、措辞、顺序、结尾、音画强度 |
 | `emotion` | 0 平静 / 1 鲜明 / 2 愤慨 / 3 拉满 | 停顿、配乐、强调词、节奏 |
 | `profanity` | `none` / `mild` / `bleeped` | 粗口档位。选 `outrage` **不会**自动提高档位 |
 | `content_mode` | `factual` / `fiction` | 现实评论，或明确标注的虚构剧情 |
+| `overlays` | `full` / `none` | `full` 画面上挂来源与性质角标；`none` 全部不显示，出处只留 `editorial.json` |
 
-**默认值**（未指定时直接沿用，不必确认）：`general` + `neutral` + `[objective]` + `emotion 1` + `profanity none` + `factual` + 90 秒 + `zh-CN`。
+**默认值**（未指定时直接沿用，不必确认）：`general` + `neutral` + `[objective]` + `emotion 1` + `profanity none` + `factual` + `overlays full` + 90 秒 + `zh-CN`。
 
 细节和四种风格的写法：`references/politics-editorial.md`；样本出处和"哪些是量过的、哪些只是看的"：`references/politics-style.md`。
+
+## 港台本地版：语言、字体、画面一起定
+
+选了 `region: taiwan` 或 `hongkong`，语言和画面就跟着定，**不能用普通话读繁体稿**：
+
+| | 台湾 | 香港 |
+|---|---|---|
+| 语音 | `zh-TW-YunJheNeural`（男）/ `zh-TW-HsiaoChenNeural`（女） | `zh-HK-WanLungNeural`（男）/ `zh-HK-HiuMaanNeural`（女） |
+| 正文 | **台湾国语写法**：影片、網路、立委、質詢、財源、期程 | **书面粤语**：唔、嘅、咗、佢、啲、喺；講咗咁耐、點解又押後 |
+| 字体 | Noto Sans TC Black（900） | Noto Sans HK Black（900） |
+| 字幕 | 900 字重、80px、7px 黑描边、`paint-order` | 同左 |
+
+**硬规矩**：
+
+- 香港版**必须**用 `zh-HK-*` 音色。用普通话音色读粤字 = 另一种语言，不算"口音差异"。
+- 音色不存在或服务报错要**抛真实错误**，不能悄悄退回 `zh-CN` 交片。
+- 改了 `text` 或 `voice` **必须重跑** `temp_voice.py`，不复用旧配音缓存。
+- 上游巨字字体（阿里妈妈数黑体）**缺 142/336 个常用繁体字**，港台题材会一字一字 fallback 混排；本地版因此换 Noto TC/HK Black。
+
+建片子：
+
+```powershell
+node scripts/new_film.mjs <目录> --region taiwan      # 繁体正文 + zh-TW 男声 + 无角标
+node scripts/new_film.mjs <目录> --region hongkong    # 书面粤语 + zh-HK 男声 + 无角标
+```
+
+细节：`references/local-language.md`（用词与语音）、`references/local-native-style.md`（封面、字幕、动效、无角标）。
+
+## 无角标（overlays: none）
+
+用户要求画面不显示来源、性质、虚构、研究等任何标签时：
+
+```js
+K.politics.display('no-badges');
+```
+
+关掉的是**所有**上屏标记：来源角标、性质 chip、虚构演绎、角落年份/主题小字（`kicker` 写了也不画）、原素材自带的台标（要裁掉）。
+
+**关掉不等于没有记录**：`editorial.json` 的 `sources` / `claims` 照常写，事实与分析的区分仍在文件里。画面不显示 ≠ 事实不分。
+
+`--check` 会打印 `虚构标记：已关闭（display:'no-badges'…）`。
 
 ## 立场怎么用，不越哪条线
 
@@ -48,6 +90,7 @@ description: 港台时政评论短片（1–3 分钟、16:9）。先选地区（
 **未证实的爆料**：只做归因——谁、哪天、说了什么、证据是什么、争议在哪；`kind:'unverified'` + `marked_on_screen:true`，口播和画面都写"未证实"。不能升级成"我们确认"。
 
 **真要做虚构**：`content_mode:'fiction'` + `fiction_marker`，全片右上角常驻"虚构演绎"，用虚构人物和虚构机构，不给真实官员安虚构的罪名。
+例外只有一种：`overlays:'none'`（用户明确要求画面不挂任何标记）时不再强制常驻，但 `note` 里必须写清"这是虚构演绎、不外发"——**画面不显示不等于可以不交代**。
 
 ## 一条片的骨架
 
@@ -119,18 +162,24 @@ K.politics.fiction(true, '虛構演繹 · 人物與情節均為虛構');   // �
 
 ```powershell
 node scripts/new_film.mjs <片子目录> --politics          # 建时政片子：5 镜起点 + editorial.json + 本地虚构材料
+node scripts/new_film.mjs <片子目录> --region taiwan     # 港台本地版：繁体正文 + zh-TW 男声 + 无角标
+node scripts/new_film.mjs <片子目录> --region hongkong   # 港台本地版：书面粤语 + zh-HK 男声 + 无角标
 node scripts/timeline_stub.mjs <片子>/script.json        # 没配音时先估时间线
-python scripts/temp_voice.py <片子>/script.json          # edge-tts 临时配音 + 逐字时间线
+python scripts/temp_voice.py <片子>/script.json          # edge-tts 临时配音 + 逐字时间线（用 script.json 里的 voice）
+python scripts/cutout.py <图> <out.png>                  # 人物抠像（封面大头用）
 python scripts/check_editorial.py <片子>/editorial.json  # 事实底稿：0 过 / 1 停 / 2 看提醒
 node scripts/render.mjs --dir <片子> --check-policy politics --check   # 镜头表（时政策略）
 node scripts/render.mjs --dir <片子> --check-policy politics --sheet   # 每镜三帧
+node scripts/render.mjs --dir <片子> --cover             # 封面 1280×720
+node scripts/render.mjs --dir <片子> --cover --cover-h 1080             # 封面 1920×1080
 node scripts/render.mjs --dir <片子> --check-policy politics --video --h 720
 python scripts/mix.py <片子> --check
 ```
 
 `--politics` 建出来的起点是**虚构样例**（可离线跑通）：换成真实题材时，把 `editorial.json` 的 `content_mode` 改成 `factual`、删掉 `film.js` 里的 `K.politics.fiction(...)`、`sources` 换成真实来源。
+`--region` 建出来的起点是**真实题材脚手架**：正文已经是繁体/粤语，`sources` 是空的——`check_editorial` 会警告"还没填来源"，填完才算数。
 
-老片子加时政能力用 `--sync`，但它**不会**给你的 `index.html` 加 `<script src="lib/politics.js"></script>`，要手动加，否则新场景不可用。
+老片子加时政能力用 `--sync`，但它**不会**给你的 `index.html` 加 `<script src="lib/politics.js"></script>` 和 `local_native.js`，要手动加，否则新场景不可用。
 
 `--check-policy politics` 关掉财经专属配额（真素材≥40%、滚数≤2、酒红底≤1 段、同一家公司同色），换成"证据镜要挂 sourceIds"这类实质检查。不写这个参数就是上游默认行为，财经片照旧。
 
@@ -148,6 +197,8 @@ python scripts/mix.py <片子> --check
 
 | 在做什么 | 读 |
 |---|---|
+| 台湾用词、香港粤语、语音选择 | `references/local-language.md` |
+| 封面、粗描边字幕、slam/震动/爆裂、无角标 | `references/local-native-style.md` |
 | 立场、风格、情绪、粗口、标题、怎么反驳 | `references/politics-editorial.md` |
 | 节目样本、出处、哪些量过哪些没量 | `references/politics-style.md` |
 | 找素材、抓不到怎么办、素材降级路径 | `references/politics-sourcing.md` |

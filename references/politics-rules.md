@@ -63,9 +63,10 @@
 | P17 | `unverified` 有 `attribution` | **自动** |
 | P18 | `unverified` 标 `marked_on_screen:true` | **自动**（声明）；画面是否真写了"未证实"**手查** |
 | P19 | 未证实的不进标题和封面 | **手查** |
-| P20 | `fiction` 有 `fiction_marker` + 至少一条 fiction claim | **自动** |
-| P21 | 虚构标记全片每镜都在 | **自动**（`--check` 打印"虚构标记：全片常驻…每一镜都验过"）+ 抽帧看 |
+| P20 | `fiction` 有 `fiction_marker` + 至少一条 fiction claim；`overlays:'none'` 时不强制 marker，但 `note` 要写清是虚构演绎 | **自动** |
+| P21 | `overlays:'full'` 时虚构标记全片每镜都在 | **自动**（`--check` 打印"虚构标记：全片常驻…每一镜都验过"）；`overlays:'none'` 时打印"已关闭" |
 | P22 | 虚构不给真实官员/机构安虚构罪名 | **手查** |
+| P23 | `overlays:'none'` 时**所有**上屏标记都要消失：来源角标、性质 chip、虚构标记、角落小字（`kicker`）、原素材台标 | **自动**（`badgeAt` 返回空 + `kicker` 不绘制）+ 抽帧看 |
 
 ### 四、画面与追踪
 

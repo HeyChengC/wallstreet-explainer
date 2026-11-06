@@ -37,7 +37,8 @@ const FF = process.env.FFMPEG ?? LOCAL.ffmpeg ?? 'ffmpeg';
 const here = path.resolve(arg('--dir') ?? '.'), PAGE = arg('--page') ?? 'index.html';
 const H = Number(arg('--h') ?? 720), Wd = Math.round(H * 16 / 9), out = arg('--out') ? path.resolve(arg('--out')) : path.join(here, 'out');
 await fs.mkdir(out, {recursive: true});
-const T = JSON.parse(await fs.readFile(path.join(here, 'timeline.json'), 'utf8'));
+// 封面不需要时间线（封面是第一帧之外另排的版），没有 timeline.json 也能渲
+const T = has('--cover') ? {beats: [], duration: 0} : JSON.parse(await fs.readFile(path.join(here, 'timeline.json'), 'utf8'));
 // 文案和时间线对不对得上：script.json 改过、timeline.json 没重算时，后面报的"句子里找不到某个词"全是误导（报的是旧句子），先在这里拦住
 const TS = path.join(path.dirname(fileURLToPath(import.meta.url)), 'timeline_stub.mjs');
 function staleTimeline() {
@@ -92,6 +93,42 @@ if (arg('--stills')) {
   await b.close(); server.close(); if (errs.length) console.log('页面报错（先修再看帧）：', [...new Set(errs)].slice(0, 8));
   if (warns.length) console.log([...new Set(warns)].join('\n')); console.log('stills', ts.length); process.exit(0);
 }
+// ---------- 封面：把 film.js 里的 K.cover(...) 渲成图（不经时间线） ----------
+//   node render.mjs --dir film --cover [--cover-h 720] [--page index.html]
+// film.js 里写：window.COVER = <K.cover({...}) 的返回值>；或 K.coverHTML(...)。
+if (has('--cover')) {
+  const CH = Number(arg('--cover-h') ?? 720), CW = Math.round(CH * 16 / 9);
+  const b = await chromium.launch({args: ['--force-color-profile=srgb', '--disable-lcd-text']});
+  const ctx = await b.newContext({viewport: {width: CW, height: CH}, deviceScaleFactor: CH < 900 ? 2 : 1});
+  const p = await ctx.newPage(); const errs = [];
+  p.on('pageerror', e => errs.push(e.message));
+  p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+  const srv = http.createServer(async (q, r) => {
+    try { const fp = path.join(here, decodeURIComponent(new URL(q.url, 'http://x').pathname.split('?')[0])); const bb = await fs.readFile(fp);
+      r.writeHead(200, {'Content-Type': mime[path.extname(fp)] ?? 'application/octet-stream'}).end(bb); }
+    catch { r.writeHead(404).end(); }
+  });
+  await new Promise(r => srv.listen(0, '127.0.0.1', r)); const prt = srv.address().port;
+  await p.goto(`http://127.0.0.1:${prt}/${PAGE}?cover=1&policy=${POLICY}`);
+  try {
+    await p.evaluate(() => window.COVER_READY ?? window.ready);
+    // 封面有一层独立的缩放：页面按 1920×1080 设计，这里把 stage 缩到封面尺寸
+    await p.evaluate(([w, h]) => {
+      const st = document.querySelector('#stage');
+      if (st) st.style.transform = `scale(${Math.min(w / 1920, h / 1080)})`;
+      document.body.style.margin = '0'; document.body.style.overflow = 'hidden';
+    }, [CW, CH]);
+    await p.evaluate(() => document.fonts.ready);
+    await p.waitForTimeout(400);
+  } catch (e) { console.error('封面页面没跑起来：\n' + e.message.split('\n')[0]); await b.close(); srv.close(); process.exit(3); }
+  const suffix = CH >= 1080 ? '1920' : '1280';
+  const file = path.join(out, `cover_${suffix}.${CH >= 1080 ? 'png' : 'jpg'}`);
+  await p.screenshot({path: file, type: CH >= 1080 ? 'png' : 'jpeg', ...(CH >= 1080 ? {} : {quality: 92})});
+  await b.close(); srv.close();
+  if (errs.length) console.log('页面报错：\n- ' + [...new Set(errs)].slice(0, 6).join('\n- '));
+  console.log(`${CW}×${CH} → ${file}`);
+  process.exit(errs.length ? 2 : 0);
+}
 // ---------- 模板档：查镜头表（kit.js 的 K.film 登记的） ----------
 if (has('--check')) {
   const {b, p, errs} = await page();
@@ -101,9 +138,11 @@ if (has('--check')) {
   if (!r) { console.log('页面里没有镜头表：film.js 没用 K.film（手写的片子用 --moves 查手法）'); process.exit(0); }
   fsSync.writeFileSync(path.join(out, 'check.json'), JSON.stringify(r, null, 1));   // 同一份镜头表和提醒，给别的脚本读（kit/gallery/make.py）
   console.log(`检查策略：${POLICY}${r.policy ? (r.policy === POLICY ? '' : `（页面报的是 ${r.policy}，和命令行不一致，检查一下 film.js 有没有自己传 policy）`) : ''}`);
-  if (r.fiction) console.log(r.fiction.on
-    ? `虚构标记：全片常驻「${r.fiction.text}」${r.fiction.missing?.length ? `，但有 ${r.fiction.missing.length} 处缺` : '，每一镜都验过'}`
-    : '虚构标记：未开启（factual 模式正常；fiction 模式要 K.politics.fiction(true, …)）');
+  if (r.fiction) console.log(!r.fiction.on
+    ? '虚构标记：未开启（factual 模式正常；fiction 模式要 K.politics.fiction(true, …)）'
+    : r.fiction.suppressed
+      ? `虚构标记：已关闭（display:'no-badges'，私人研究预览；出处与真实性类型在 editorial.json 里）`
+      : `虚构标记：全片常驻「${r.fiction.text}」${r.fiction.missing?.length ? `，但有 ${r.fiction.missing.length} 处缺` : '，每一镜都验过'}`);
   console.log('镜  时间            时长   场景        接法       says');
   for (const s of r.shots) console.log(`${String(s.i + 1).padStart(2)}  ${s.t0.toFixed(1).padStart(5)}–${s.t1.toFixed(1).padEnd(6)} ${(s.t1 - s.t0).toFixed(1).padStart(4)}s  ${s.scene.padEnd(10)} ${s.enter.padEnd(10)} ${s.says || '（没写）'}`);
   console.log(r.warns.length ? `\n要看一眼（${r.warns.length} 条）：\n- ` + r.warns.join('\n- ') : '\n没有要提醒的。');

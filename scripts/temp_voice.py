@@ -29,7 +29,42 @@ from pathlib import Path
 SP = Path(sys.argv[1]).resolve(); D = SP.parent
 S = json.loads(SP.read_text('utf-8'))
 REDO, ASR = '--redo' in sys.argv, '--asr' in sys.argv
-VOICE, RATE = S.get('voice', 'zh-CN-YunxiNeural'), S.get('rate', '+0%')
+
+# ---------- 地区感知的音色 ----------
+# script.json 里可以写 "region": "taiwan" / "hongkong"，也可以只写 "voice"。
+# 优先用显式 voice；没写 voice 但有 region 时用该地区的默认男声。
+# **拒绝错配**：region=hongkong 却给了 zh-CN / zh-TW 音色 → 直接报错，不静默生成普通话配音。
+REGION_DEFAULT = {
+    'taiwan': 'zh-TW-YunJheNeural',
+    'hongkong': 'zh-HK-WanLungNeural',
+}
+REGION_PREFIX = {'taiwan': 'zh-TW-', 'hongkong': 'zh-HK-'}
+
+REGION = S.get('region')
+VOICE = S.get('voice')
+RATE = S.get('rate', '+0%')
+
+if REGION and REGION not in REGION_DEFAULT:
+    print(f'script.json 的 region 只能是 {list(REGION_DEFAULT)}，现在是 {REGION!r}')
+    sys.exit(1)
+
+if REGION and not VOICE:
+    VOICE = REGION_DEFAULT[REGION]
+    print(f'region={REGION} 没写 voice，用默认音色 {VOICE}')
+
+if not VOICE:
+    VOICE = 'zh-CN-YunxiNeural'
+
+# 错配检查：香港片不许用 zh-CN / zh-TW；台湾片不许用 zh-CN / zh-HK
+if REGION:
+    want = REGION_PREFIX[REGION]
+    if not VOICE.startswith(want):
+        other = {'taiwan': '（不能用普通话或粤语音色读台湾国语稿）',
+                 'hongkong': '（不能用普通话或台湾国语读粤语稿——那是另一种语言，不是口音差异）'}[REGION]
+        print(f'音色错配：region={REGION} 要求 {want}* 的音色，现在是 {VOICE}{other}')
+        print(f'  该地区的默认音色是 {REGION_DEFAULT[REGION]}；确定要用别的，就改 script.json 的 voice。')
+        sys.exit(1)
+
 (D / 'voice').mkdir(exist_ok=True)
 TRIM = "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.03"
 
