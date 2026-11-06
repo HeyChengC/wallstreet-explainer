@@ -148,15 +148,28 @@ node scripts/render.mjs --dir <片子> --check-policy politics --sheet          
 | [`examples/taiwan-native`](examples/taiwan-native) | 27.6 秒 | 台北市長辯論：金句怎麼搶聲量 | 红黄撞色大头封面、粗描边巨字、slam/震动/爆裂、80px 900 字重繁中字幕、**无角标** |
 | [`examples/hongkong-native`](examples/hongkong-native) | 42.3 秒 | 2024 垃圾徵費押後，邊個交代 | **书面粤语正文 + zh-HK 音色**、官员抠像封面、原片裁掉立法会 logo、无角标 |
 
-两版都带 `cover_1280.jpg`（封面成品）、`cover.js`（封面版式源）、`script.json`、`film.js`、`editorial.json`、`film.css`，以及裁好的素材图。**原视频不随仓库分发**（第三方版权），`editorial.json` 里记了来源 URL。
+两版都带 `cover.html`（封面入口页）、`cover.js`（封面版式）、`cover_1280.jpg`（成品）、`script.json`、`film.js`、`editorial.json`、`film.css`，以及裁好的素材图。**原视频不随仓库分发**（第三方版权），`editorial.json` 里记了来源 URL。
 
-复现封面：
+**完整复现**（示例里没有 `lib/` 和 `fonts/`——那是本机路径，不进仓库）：
 
 ```powershell
-node scripts/render.mjs --dir examples/hongkong-native --page cover.html --cover
-```
+# 1. 建一个带 lib / fonts 的新片子（这里以香港版为例）
+node scripts/new_film.mjs D:/tmp/hk-demo --region hongkong
 
-> 注意：`examples/` 里的片子没有 `lib/` 和 `fonts/`（那是本机路径，不进仓库）。要跑完整渲染，先 `node scripts/new_film.mjs <新目录> --region hongkong` 建一个片子，再把示例的 `film.js` / `script.json` / `editorial.json` / `assets/` 拷进去。
+# 2. 把示例的全部相关文件拷进去（不是只拷三个 json）
+$src = "examples/hongkong-native"
+Copy-Item "$src/film.js","$src/script.json","$src/editorial.json","$src/film.css","$src/cover.html","$src/cover.js" "D:/tmp/hk-demo/" -Force
+Copy-Item "$src/assets/img/*" "D:/tmp/hk-demo/assets/img/" -Force
+
+# 3. 重出时间线（示例的 script.json 有台词但新目录还没有配音）
+python scripts/temp_voice.py D:/tmp/hk-demo/script.json
+
+# 4. 检查 + 封面 + 联系表
+python scripts/check_editorial.py D:/tmp/hk-demo/editorial.json
+node scripts/render.mjs --dir D:/tmp/hk-demo --page cover.html --cover
+node scripts/render.mjs --dir D:/tmp/hk-demo --check-policy politics --check
+node scripts/render.mjs --dir D:/tmp/hk-demo --check-policy politics --sheet
+```
 
 **历史示例（v0.1，财经风格）**
 

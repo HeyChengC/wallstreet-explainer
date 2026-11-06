@@ -1,6 +1,6 @@
 ---
 name: political-commentary
-description: 港台时政评论短片（1–3 分钟、16:9）。先选地区（general / taiwan / hongkong）、立场（neutral / green-leaning 偏绿 / blue-leaning 偏蓝 / 香港 establishment-leaning 建制 / pan-democratic-leaning 泛民 / custom）、风格（objective 客观、traffic 爆料悬念、outrage 愤慨、adversarial 强对立，可组合）、情绪强度和粗口档位，再把"发生了什么—最关键的证据—各方公开立场—分歧和影响—我的判断—下一步看什么"做成一条片。真实的人、新闻原文、政府公报、议会记录、记者会画面作证据；图形只演时间顺序、立场对比和票数席位。立场可以鲜明、可以尖锐批评，但不改事实、原话和身份；未证实的爆料要标"未证实"，要编内幕走 fiction 并全程标"虚构演绎"。工具：新闻原文截图与荧光笔、逐帧渲染、配音时间线、混音、口播包装；配 editorial.json 记录来源与事实（check_editorial.py 校验）。用户说"时政评论""港台评论""做条时政视频""像少康战情室那种""香港政策拆解""台湾议题交锋""带点内幕感""强对立""愤慨一点""虚构政治剧情"时使用。
+description: 港台时政评论短片（1–3 分钟、16:9）。地区决定语言：台湾用繁体 + 台湾国语 + Noto Sans TC Black，香港用**书面粤语** + zh-HK 音色 + Noto Sans HK Black。再选立场（neutral / 台湾绿营蓝营 / 香港建制泛民 / custom）、风格（objective / traffic / outrage / adversarial，可组合）、情绪与粗口档位，把"发生了什么—最关键的证据—各方公开立场—分歧与影响—我的判断—下一步看什么"做成一条片。本地自媒体包装：人物抠像大头上封面、粗描边巨字、slam/震动/爆裂、900 字重黑描边字幕；角标可选（overlays full 显示来源与性质，none 则全部不上屏、出处只留 editorial.json）。立场可以鲜明、可以尖锐批评，但不改事实、原话和身份；未证实的爆料要标"未证实"，要编内幕走 fiction 并按 overlays 配置标注。工具：新闻截图与荧光笔、人物抠像、逐帧渲染、配音时间线、混音、封面露；配 editorial.json 记录来源与事实（check_editorial.py 校验）。用户说"时政评论""港台评论""做条时政视频""像少康战情室那种""香港政策拆解""台湾议题交锋""粤语评论""带点内幕感""强对立""愤慨一点""不要角标""虚构政治剧情"时使用。
 ---
 
 # 时政评论（political-commentary）
