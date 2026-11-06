@@ -18,7 +18,8 @@ export function signatureOf(S) {
     title: S.title ?? null,
     lines: (S.lines ?? []).map(l => [l.id ?? null, l.text ?? null, l.say ?? null, l.gap ?? null,
       l.bite ? {pre: l.bite.pre ?? null, post: l.bite.post ?? null,
-                parts: (l.bite.parts ?? []).map(p => [p[0], +(+(p[1] ?? 0)).toFixed(3), (+(p[2] ?? 0)).toFixed(3), p[3], p[4]])} : null]),
+                parts: (l.bite.parts ?? []).map(p => [p[0], p[1] == null ? null : +(+p[1]).toFixed(3),
+                                                        p[2] == null ? null : +(+p[2]).toFixed(3), p[3], p[4]])} : null]),
   };
 }
 

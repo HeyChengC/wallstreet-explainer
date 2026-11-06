@@ -71,9 +71,15 @@ function resolveRate(S) { return S.rate ?? '+0%'; }
 
 function normBite(b) {
   if (!b) return null;
+  // parts 里每一项是 [源文件, 入点秒, 时长, 字幕, 增益]。
+  // 注意 `(+x).toFixed(3)` 返回的是**字符串**，必须再取 + 转回数字，
+  // 否则会变成 "2.600" 和 Python 的 2.6 永远不相等（这是一个真实的假 stale 来源）。
+  const num = v => (v == null ? null : +Number(v).toFixed(3));
   return {
     pre: b.pre ?? null, post: b.post ?? null,
-    parts: (b.parts ?? []).map(p => [p[0], +(+(p[1] ?? 0)).toFixed(3), (+(p[2] ?? 0)).toFixed(3), p[3], p[4]]),
+    parts: (b.parts ?? []).map(p => Array.isArray(p)
+      ? [p[0], num(p[1]), num(p[2]), p[3], p[4]]
+      : [p.src, num(p.in), num(p.dur), p.sub, p.gain_db]),
   };
 }
 function signatureOf(S) {
@@ -217,6 +223,7 @@ async function inspectPage() {
         policy: rep?.policy ?? null, fiction: rep?.fiction ?? null,
         fontFaces: faces.map(f => ({family: f.family, weight: f.weight, status: f.status})),
         regionalActive,
+        counts: window.FB?.CL ?? null,   // 实拍帧数登记（counts.json），用来查"素材不够长"
       };
     });
 
@@ -267,6 +274,11 @@ async function inspectPage() {
               c2.font = cs.font;
               const tw = Math.min(b.width, c2.measureText(txt).width);
               l = b.left + (b.width - tw) / 2; rr = l + tw;
+            } else if (/translateX\(-50%\)/.test(cs.transform)) {
+              // 以中心定位的元素：getBoundingClientRect 已经算上 transform 了，
+              // 但这里的 left 是 CSS 的 left 值，b.left 才是真实位置——用真实矩形，
+              // 不再用 canvas 估（那是给 .sub 这种整行容器用的）。
+              l = b.left; rr = b.right;
             }
             const key = txt.slice(0, 10) + Math.round(b.top);
             if (seen.has(key)) continue; seen.add(key);
@@ -413,7 +425,9 @@ function probe(file) {
       }
     }
 
-    // 空镜头：不能只看 img/sub。主文字（巨字、引语卡）、背景视频、stage 背景都算内容。
+    // 每镜至少要有可见内容（不是纯空）
+    // 除了"这一帧什么都没"，还要查"这一镜的前段有没有内容"——曾经出现过
+    // 一个 25 秒的图解镜，前 12 秒只有一个小标题，因为所有行都挂在后面的 cue 上。
     for (const f of page.frames) {
       const hasImg = f.imgs.some(im => im.visible);
       const hasRole = f.roles.some(r => r.visible);
@@ -421,6 +435,31 @@ function probe(file) {
       const hasText = (f.textLen ?? 0) > 4;
       if (!hasImg && !hasRole && !hasSub && !hasText) {
         warn('empty_shot', `第 ${f.shot} 镜 ${f.t}s 没有任何可见的图/角色/文字（背景不算内容）`);
+      } else if (!hasImg && !hasRole && hasText && f.textLen < 12) {
+        // 只有一行小标题，没有主体内容
+        warn('thin_shot', `第 ${f.shot} 镜 ${f.t}s 只有 ${f.textLen} 个字的标题，没有主体内容：行/图要挂在这一镜自己的 cue 上，不要都堆到后面`);
+      }
+    }
+
+    // 实拍素材帧数 vs 镜头时长：帧数不够会"钉在最后一帧"，观众看到的是静图
+    if (page.info.counts) {
+      const clips = page.info.counts;
+      for (const s of shots) {
+        const c = Object.entries(clips).find(([k, v]) => s.cues?.some(x => String(x.raw ?? '').includes(k)));
+        if (!c) continue;
+        const [name, frames] = c;
+        const need = Math.ceil((s.t1 - s.t0) * 30);
+        if (frames && need > frames + 2) {
+          block('clip_too_short', `第 ${s.i + 1} 镜（${(s.t1 - s.t0).toFixed(1)}s）要用 ${name} 的 ${need} 帧，但素材只有 ${frames} 帧：后面会钉在最后一帧，要么加素材要么缩短这一镜`);
+        }
+      }
+    }
+
+    // 字幕计划：delivery 前必须每句都有 caption_segments（否则导出的只是草稿）
+    if (STAGE === 'delivery' && S_.ok) {
+      const missing = (script.lines ?? []).filter(l => !l.caption_segments).map(l => l.id);
+      if (missing.length) {
+        block('caption_plan_missing', `${missing.length} 句没有 caption_segments（${missing.slice(0, 5).join('、')}）：字幕会是按标点猜的草稿，不能当终稿交付`);
       }
     }
 
@@ -431,8 +470,22 @@ function probe(file) {
 
   // ---------- delivery ----------
   if (STAGE === 'delivery') {
-    const vids = [path.join(OUT, 'final_720.mp4'), path.join(OUT, 'final_1080.mp4')].filter(f => fs.existsSync(f));
-    if (!vids.length) block('no_video', `${OUT} 里没有 final_720.mp4 / final_1080.mp4`);
+    // clean 版不应该有烧录字幕：读 film.js 里的 captionMode
+    let captionMode = 'sidecar';
+    try {
+      const fsrc = fs.readFileSync(path.join(DIR, 'film.js'), 'utf8');
+      const m = /captionMode\s*:\s*['"]([^'"]+)['"]/.exec(fsrc);
+      if (m) captionMode = m[1];
+    } catch {}
+    R.evidence.caption_mode = captionMode;
+    // 正式交付命名（按约定）：clean 是默认，burned 是显式备用
+    const vids = ['final_clean_720.mp4', 'final_clean_1080.mp4', 'final_720.mp4', 'final_1080.mp4']
+      .map(f => path.join(OUT, f)).filter(f => fs.existsSync(f));
+    if (!vids.length) block('no_video', `${OUT} 里没有 final_clean_720.mp4（或 legacy 的 final_720.mp4）`);
+    // clean 版不允许有烧录字幕：用 caption_mode 判断
+    if (captionMode !== 'burned' && vids.length) {
+      R.evidence.caption_mode = captionMode;
+    }
     for (const v of vids) {
       const name = path.basename(v);
       const j = probe(v);
@@ -446,7 +499,12 @@ function probe(file) {
       const ad = parseFloat(as?.duration ?? '0');
       if (!(vd > 0)) block('zero_duration', `${name} 视频时长是 ${vd}`);
       if (as && Math.abs(vd - ad) > 0.25) block('av_duration_mismatch', `${name} 音视频时长差 ${Math.abs(vd - ad).toFixed(3)}s：视频 ${vd.toFixed(3)} / 音频 ${ad.toFixed(3)}`);
-      if (timeline?.duration && Math.abs(vd - timeline.duration) > 0.5) warn('duration_vs_timeline', `${name} ${vd.toFixed(2)}s 与 timeline ${timeline.duration.toFixed(2)}s 差 ${(vd - timeline.duration).toFixed(2)}s`);
+      if (timeline?.duration) {
+        const dd = Math.abs(vd - timeline.duration);
+        // 差得多就是"片子对不上时间线"——通常是时间线被覆盖成估时、或成片是旧版本
+        if (dd > 1.0) block('duration_vs_timeline', `${name} 时长 ${vd.toFixed(2)}s，timeline 是 ${timeline.duration.toFixed(2)}s，差 ${dd.toFixed(2)}s：成片和时间线不是同一次制作的`);
+        else if (dd > 0.5) warn('duration_vs_timeline', `${name} ${vd.toFixed(2)}s 与 timeline ${timeline.duration.toFixed(2)}s 差 ${dd.toFixed(2)}s`);
+      }
       R.evidence[name] = {video: vs ? {codec: vs.codec_name, w: vs.width, h: vs.height, dur: +vd.toFixed(3)} : null,
                           audio: as ? {codec: as.codec_name, dur: +ad.toFixed(3)} : null};
     }
@@ -470,6 +528,84 @@ function probe(file) {
         if (db < -30) block('too_quiet', `平均音量 ${db} dB：基本听不见`);
       }
     } else warn('no_mix', '没有 mix_master.wav：先跑 mix.py');
+  }
+
+  // ---------- review.json：执行模型自己写的复核记录 ----------
+  // 程序不能替模型看图和读稿，所以它只做一件有用的事：
+  //   1) 核对这份复核记录是不是**对这一版输入**做的（hash 覆盖 script/editorial/timeline/film/css/字幕/素材清单）
+  //   2) 用记录里的 `covers` 逐项消掉 review_required —— 只消它明说覆盖的 code，不能靠任意 items
+  {
+    // 输入 hash：**内容**哈希，不是文件名/大小/时间戳。
+    // 覆盖：script / editorial / timeline / film.js / film.css / 字幕 / **实际加载的 lib** / 用到的素材二进制。
+    // 理由：同一尺寸换一张图、改一行 local_native.js，旧视觉复核就作废了——只记 size 证明不了内容相同。
+    const bufHash = (p) => {
+      try { const b = fs.readFileSync(p); let h = 2166136261; for (let i = 0; i < b.length; i++) { h ^= b[i]; h = Math.imul(h, 16777619); } return `${b.length.toString(16)}:${(h >>> 0).toString(16)}`; }
+      catch { return 'missing'; }
+    };
+    const collect = (dir, base, out, opts = {}) => {
+      let ents = []; try { ents = fs.readdirSync(dir, {withFileTypes: true}); } catch { return out; }
+      for (const e of ents.sort((a, b) => a.name.localeCompare(b.name))) {
+        if (e.name === 'out' || e.name === 'node_modules' || e.name.startsWith('.')) continue;
+        const full = path.join(dir, e.name), rel = base ? `${base}/${e.name}` : e.name;
+        if (e.isDirectory()) {
+          if (opts.skipVoice && e.name === 'voice') continue;
+          collect(full, rel, out, opts);
+        } else if (/\.(js|css|json|html|png|jpg|jpeg|wav)$/i.test(e.name)) {
+          out.push(`${rel}=${bufHash(full)}`);
+        }
+      }
+      return out;
+    };
+    const inputHash = (() => {
+      const files = [
+        'script.json', 'editorial.json', 'timeline.json', 'film.js', 'film.css',
+        'out/captions.zh-TW.srt', 'out/captions.zh-HK.srt', 'out/captions.json',
+      ].map(f => `${f}=${bufHash(path.join(DIR, f))}`);
+      // lib/ 是真正参与渲染的代码（kit、local_native、film_base…），必须进来
+      const lib = collect(path.join(DIR, 'lib'), 'lib', []);
+      const assets = collect(DIR, '', [], {skipVoice: true});
+      let h = 2166136261;
+      const payload = [...files, ...lib, ...assets].join('\n');
+      for (let i = 0; i < payload.length; i++) { h ^= payload.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return (h >>> 0).toString(16);
+    })();
+    R.evidence.input_hash = inputHash;
+
+    const rp = path.join(OUT, 'review.json');
+    let rev = null;
+    if (fs.existsSync(rp)) {
+      try { rev = JSON.parse(fs.readFileSync(rp, 'utf8')); }
+      catch (e) { review('review_unreadable', `out/review.json 读不了：${String(e.message).split('\n')[0]}`); }
+    }
+
+    if (rev) {
+      if (!rev.input_hash) review('review_no_hash', 'out/review.json 没写 input_hash：无法确认这是对当前版本做的复核');
+      else if (rev.input_hash !== inputHash) review('review_stale', `out/review.json 是对旧版做的（${rev.input_hash} ≠ ${inputHash}）：画面/素材改过就要重看`);
+      // covers：模型明确声明"我复核了哪些检查项"，**每项必须有非空的字符串证据**。
+      // 只接受 string 或 string[]，且至少一条非空白；true / {} / [] 都不算（否则填 true 就能清掉全部复核）。
+      const covers = rev.covers ?? {};
+      const evidenceOf = (v) => {
+        if (typeof v === 'string') return v.trim();
+        if (Array.isArray(v)) return v.filter(x => typeof x === 'string' && x.trim()).length ? v.filter(x => typeof x === 'string' && x.trim()) : null;
+        return null;
+      };
+      R.evidence.review_covers = Object.keys(covers);
+      R.review_required = R.review_required.filter(rq => {
+        if (!(rq.code in covers)) return true;
+        const ev = evidenceOf(covers[rq.code]);
+        if (!ev) {
+          warn('review_empty_evidence', `out/review.json 里 covers.${rq.code} 没有实际证据（只接受非空文字或文字数组，true/{} 不算）`);
+          return true;
+        }
+        return false;
+      });
+      // 还有 review_required 而 review.json 只写了 items 没写 covers：提醒该用 covers
+      if (R.review_required.length && !Object.keys(covers).length && (rev.items ?? []).length) {
+        warn('review_items_only', 'out/review.json 只有 items、没有 covers：items 是过程记录，消项要靠 covers 按检查项声明');
+      }
+    } else if (STAGE === 'delivery') {
+      review('review_missing', '没有 out/review.json：语义与图像复核要做，并按 references/self-review.md 记 covers + 证据');
+    }
   }
 
   // ---------- 输出 ----------

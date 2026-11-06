@@ -99,7 +99,9 @@ if (arg('--stills')) {
 if (has('--cover')) {
   const CH = Number(arg('--cover-h') ?? 720), CW = Math.round(CH * 16 / 9);
   const b = await chromium.launch({args: ['--force-color-profile=srgb', '--disable-lcd-text']});
-  const ctx = await b.newContext({viewport: {width: CW, height: CH}, deviceScaleFactor: CH < 900 ? 2 : 1});
+  // deviceScaleFactor 固定 1：输出像素必须等于 --cover-h 声明的尺寸。
+  // 以前用 2 是为了"更清晰"，结果 cover_1280.jpg 实际是 2560×1440——文件名骗人。
+  const ctx = await b.newContext({viewport: {width: CW, height: CH}, deviceScaleFactor: 1});
   const p = await ctx.newPage(); const errs = [];
   p.on('pageerror', e => errs.push(e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
@@ -125,6 +127,26 @@ if (has('--cover')) {
   const file = path.join(out, `cover_${suffix}.${CH >= 1080 ? 'png' : 'jpg'}`);
   await p.screenshot({path: file, type: CH >= 1080 ? 'png' : 'jpeg', ...(CH >= 1080 ? {} : {quality: 92})});
   await b.close(); srv.close();
+  // 自检：截出来的像素必须等于声明的尺寸，不能靠文件名承诺
+  try {
+    const raw = fsSync.readFileSync(file);
+    let w = 0, h = 0;
+    if (raw[0] === 0x89 && raw.toString('ascii', 1, 4) === 'PNG') { w = raw.readUInt32BE(16); h = raw.readUInt32BE(20); }
+    else { // JPEG：扫 SOF 段
+      let i = 2;
+      while (i < raw.length) {
+        if (raw[i] !== 0xFF) { i++; continue; }
+        const m = raw[i + 1];
+        if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) { h = raw.readUInt16BE(i + 5); w = raw.readUInt16BE(i + 7); break; }
+        i += 2 + raw.readUInt16BE(i + 2);
+      }
+    }
+    if (w && h && (w !== CW || h !== CH)) {
+      console.log(`注意：写出的 ${path.basename(file)} 是 ${w}×${h}，和声明的 ${CW}×${CH} 不一致`);
+      if (errs.length) console.log('页面报错：\n- ' + [...new Set(errs)].slice(0, 6).join('\n- '));
+      process.exit(2);
+    }
+  } catch {}
   if (errs.length) console.log('页面报错：\n- ' + [...new Set(errs)].slice(0, 6).join('\n- '));
   console.log(`${CW}×${CH} → ${file}`);
   process.exit(errs.length ? 2 : 0);

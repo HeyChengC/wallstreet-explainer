@@ -13,7 +13,7 @@ const KIT=window.KIT;
 if(!KIT)throw Error('local_native.js 要在 kit.js 之后加载');
 const K=KIT;
 
-const {C,IO,E,lerp,f1,f3,col,mixc,alpha,fitPx,FAM,SAFE}=KIT;
+const {C,IO,E,lerp,f1,f3,col,mixc,alpha,fitPx,FAM,SAFE,brow,appear,fx}=KIT;
 const {L}=S25;
 const A=v=>v==null?[]:Array.isArray(v)?v:[v];
 
@@ -182,13 +182,18 @@ K.scene('local-hero',{
    let h='';
    // 1) 背景爆裂**先画**：它在人物后面，不能盖脸
    if(p.burst)h+=burst(t,tSlam,{r:640,spikes:18,color:'#e01f1f',color2:'#ff9f0a',o:.75});
-   // 2) 人
+   // 2) 人物 / 实拍
    if(p.img){
     const pw=ph*ar;
     h+=`<img data-role="person" src="${p.img}" style="position:absolute;left:${f1(px-pw/2)}px;top:${f1(py)}px;width:${f1(pw)}px;height:${f1(ph)}px;`+
      (p.rim?`filter:drop-shadow(3px 0 0 ${p.rim}) drop-shadow(-3px 0 0 ${p.rim}) drop-shadow(0 3px 0 ${p.rim}) drop-shadow(0 -3px 0 ${p.rim}) drop-shadow(0 20px 44px rgba(0,0,0,.72));`:'filter:drop-shadow(0 20px 44px rgba(0,0,0,.72));')+`">`;
    }
-   else if(p.clip)h+=`<img src="${FB.fr(p.clip,Math.floor(Math.max(0,t-c.t0)*30)+1)}" style="position:absolute;left:${f1(px-620)}px;top:${f1(py)}px;width:1240px;height:${f1(ph)}px;object-fit:cover;object-position:50% 22%;filter:contrast(1.06) saturate(1.08) drop-shadow(0 20px 44px rgba(0,0,0,.6))">`;
+   // 实拍可以和人同时出现：img 和 clip 各自独立判断，不是二选一
+   if(p.clip){
+    const cw=p.clipW??1080,ch2=p.clipH??1080;
+    const fno=1+Math.floor(Math.max(0,t-c.t0+(p.clipFrom??0))*30*(p.clipRate??1));
+    h+=`<img data-role="footage" src="${FB.fr(p.clip,fno)}" style="position:absolute;left:${f1(p.clipX??840)}px;top:${f1(p.clipY??0)}px;width:${cw}px;height:${ch2}px;object-fit:cover;filter:contrast(1.04) saturate(1.06) drop-shadow(0 20px 44px rgba(0,0,0,.6))">`;
+   }
    // 3) 顶部小字：**不做**。左上/右上常驻的小字就是角标，用户要求和 overlays:none 一致。
    //    主题信息放进巨字本身（正文大标题），不放角落。
    // 4) 巨字（在人物之上，可以压到他身上）
@@ -199,11 +204,15 @@ K.scene('local-hero',{
    const sSize=p.sub?Math.min(p.subSize??96,fitPx(String(p.sub),'han',p.subSize??96,textW,.02)):null;
    const s1=slam(t,tSlam,{dur:.3,from:.72,over:1.14});
    const lx=p.headlineX??Math.min(560,40+textW/2);
-   h+=`<div style="position:absolute;left:${f1(lx)}px;top:${f1(p.headlineY??520)}px;transform:translate(-50%,-50%) rotate(${p.headlineRot??-2.5}deg) scale(${f3(s1.sc)});opacity:${f3(s1.o)}">`+
+   // 巨字块本身也不许越过 left/right 边界（字号收了但 rotate 与描边还会外扩）
+   h+=`<div style="position:absolute;left:${f1(lx)}px;top:${f1(p.headlineY??520)}px;transform:translate(-50%,-50%) rotate(${p.headlineRot??-2.5}deg) scale(${f3(s1.sc)});opacity:${f3(s1.o)};max-width:${f1(textW)}px;overflow:visible">`+
     heavyText(String(p.headline),{size:hSize,fill:p.fill??'#fff',stroke:p.stroke??9,shadow:p.shadow??12,glow:p.glow??24})+'</div>';
-   // 副字：往上放（默认在巨字**上方**），不和字幕抢
+   // 副字：往上放（默认在巨字**上方**），不和字幕抢；同样受 textW 约束
    if(p.sub){const s2=slam(t,tSlam+.18,{dur:.28,from:.8,over:1.12});
-    h+=`<div style="position:absolute;left:${f1(lx)}px;top:${f1((p.headlineY??520)-hSize*.86)}px;transform:translate(-50%,-50%) rotate(${p.subRot??1.5}deg) scale(${f3(s2.sc)});opacity:${f3(s2.o)}">`+
+    // 副字居中于 lx，但整块宽度不能越过 [40, textRight]：超了就把中心点往内推
+    const subW=Math.min(textW,Math.max(200,sSize*String(p.sub).length*.98));
+    const sx=Math.max(40+subW/2,Math.min(textRight-subW/2,lx));
+    h+=`<div style="position:absolute;left:${f1(sx)}px;top:${f1((p.headlineY??520)-hSize*.86)}px;transform:translate(-50%,-50%) rotate(${p.subRot??1.5}deg) scale(${f3(s2.sc)});opacity:${f3(s2.o)};width:${f1(subW)}px;text-align:center">`+
      heavyText(String(p.sub),{size:sSize,fill:p.accent??'#ffd60a',stroke:p.stroke??8,shadow:p.shadow??10,glow:p.glow??18})+'</div>';}
    // 5) 贴纸
    if(p.sticker)h+=sticker(t,tSlam+.3,{text:p.sticker,x:p.stickerX??1700,y:p.stickerY??250,size:p.stickerSize??230,color:p.stickerColor??'#ffd60a'});
@@ -313,6 +322,65 @@ K.scene('local-quote-card',{
   };
  }
 });
+
+// =====================================================================================
+// 场景 4：panel —— 图解/对照清单
+//   两三到四行「标签 → 值」，按各自的 cue 逐行亮起。
+//   layout:'rows'（默认，清单）/ 'steps'（带层级箭头的关系图）
+//   用于"四个会两个数字"、"统计口径三栏"、"市长→会报→监督"这类需要摊开对照的镜头。
+// =====================================================================================
+K.scene('panel',{
+ says:'把几样东西摊开对照：左边是名目，右边是数值或状态，一行一行亮起来',
+ use:'出席率清单、统计口径三栏、责任归属；需要"逐项摊开"的镜头',
+ avoid:'只有一个数（用 number）；要表达流向（用 flow）',
+ need:['rows'],
+ help:{title:'顶上标题',en:'英文小字（可省）',
+  rows:"[{label:'毒防會議', value:'7%', tone:'bad'|'ok'|'warn', at:'@b05:七'}]：2–4 行，at 不写就按顺序自动出",
+  layout:"'rows'（清单，默认）/ 'steps'（左边层级 + 右边值，行间有箭头）",
+  note:'底下小字说明（可省，写清这是原话还是本片判断）',tone:'底色'},
+ defaults:{tone:'charcoal',layout:'rows'},minDur:2.2,
+ beats:p=>A(p.rows).length,
+ check(p,c){const r=A(p.rows);if(r.length>4)c.warn(`${c.tag}有 ${r.length} 行：一屏最多四行`);},
+ make(p,c){
+  const rows=A(p.rows).map((r,i)=>({...r,t:c.at(r.at)??c.t0+.35+i*.55}));
+  const n=rows.length,steps=p.layout==='steps';
+  const rowH=Math.min(steps?150:132,700/n),W=1320,x0=960-W/2;
+  const y0=steps?300:320, col={'bad':'#ff5a4d','ok':'#5fd08a','warn':'#ffb84d'};
+  return t=>{
+   let h='';
+   if(p.title)h+=brow({x:960,y:150,zh:p.title,en:p.en},{o:C((t-c.t0)/.35)});
+   rows.forEach((r,i)=>{
+    const a=appear(t,r.t,.28,16);if(a.o<=0)return;
+    const y=y0+i*rowH, cl=col[r.tone]??'#cfd6e2';
+    // steps：行前加层级点 + 连接箭头
+    if(steps){
+     if(i>0){const k=E(C((t-r.t)/.35));
+      h+=`<div style="position:absolute;left:${f1(x0+26)}px;top:${f1(y-30)}px;width:3px;height:${f1(30*k)}px;background:${alpha(cl,.55)}"></div>`;}
+     h+=`<div style="position:absolute;left:${f1(x0+14)}px;top:${f1(y+rowH/2-12)}px;width:26px;height:26px;border-radius:50%;background:${cl};opacity:${f3(a.o)}"></div>`;
+    }
+    h+=`<div class="pn-row" style="left:${f1(x0)}px;top:${f1(y)}px;width:${W}px;height:${f1(rowH-14)}px;--pc:${cl};${steps?`padding-left:64px;`:''}${fx({o:a.o,dy:a.dy},'translate(0,0)')}">`+
+     `<div class="pn-l" style="font-size:${f1(Math.min(44,rowH*.34))}px">${r.label}</div>`+
+     `<div class="pn-v" style="font-size:${f1(Math.min(62,rowH*.46))}px">${r.value}</div>`+
+     `</div>`;
+   });
+   if(p.note){const a=appear(t,c.t0+.5,.3,8);
+    if(a.o>0)h+=`<div class="pn-note" style="left:960px;top:${f1(y0+n*rowH+40)}px;opacity:${f3(a.o)}">${p.note}</div>`;}
+   const cam={x:960,y:500,s:1.0},cp={...cam,s:1.0};
+   return c.bg(t,cam,cp,{tone:p.tone})+L(cam,cp,1,h);
+  };
+ }
+});
+
+const moreCss=`
+.pn-row{position:absolute;display:flex;align-items:center;justify-content:space-between;gap:28px;
+ padding:0 34px;border-radius:10px;background:rgba(255,255,255,.055);
+ box-shadow:0 0 0 1.5px rgba(255,255,255,.1);border-left:6px solid var(--pc)}
+.pn-l{font-family:${FAM.han};color:#e8ecf3;letter-spacing:.02em;font-weight:900}
+.pn-v{font-family:${FAM.han};color:var(--pc);font-weight:900;white-space:nowrap}
+.pn-note{position:absolute;transform:translateX(-50%);font:26px ${FAM.ui};color:#8f97a6;letter-spacing:.04em;
+ white-space:nowrap;width:max-content;max-width:1600px;text-align:center}
+`;
+const st2=document.createElement('style');st2.textContent=moreCss;document.head.appendChild(st2);
 
 // 导出给 film.js 直接用（封面、动效）
 Object.assign(K,{slam,shake,burst,sticker,heavyText});

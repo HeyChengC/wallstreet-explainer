@@ -45,7 +45,8 @@
   <p class="sub">影片本身没有烧录字幕；字幕来自 <code>&lt;track&gt;</code>，可以开关。用本地 HTTP 打开，<code>file://</code> 下浏览器会拒绝加载字幕。</p>
 
   <video id="v" controls preload="metadata">
-    <!-- 下面两条由 build-player 脚本按实际文件名改写；保留 track 默认开启 -->
+    <source src="final_clean_720.mp4" type="video/mp4">
+    <!-- 下面这条由 build-player 按实际文件名改写；track 默认开启 -->
     <track id="trk" kind="captions" srclang="zh" label="繁體字幕" src="captions.zh-TW.vtt" default>
   </video>
 
@@ -74,39 +75,31 @@
   const btn = document.getElementById('cc');
   const status = document.getElementById('status');
   const tbody = document.getElementById('cues');
-  const videoFile = window.__VIDEO__ || 'final_clean_720.mp4';
+  const trackEl = document.getElementById('trk');      // HTMLTrackElement
+  const track = trackEl?.track ?? v.textTracks?.[0];   // TextTrack 可能还没建
 
-  // 影片地址：优先 window.__VIDEO__（构建时写入），否则用同目录的默认名
-  if (!v.querySelector('source')) {
-    const s = document.createElement('source');
-    s.src = videoFile; s.type = 'video/mp4';
-    v.appendChild(s);
-  }
-
-  const track = v.textTracks[0];
   const fmt = t => {
     const m = Math.floor(t / 60), s = (t % 60).toFixed(1).padStart(4, '0');
     return `${m}:${s}`;
   };
 
   function setCC(on) {
-    if (!track) return;
+    if (!track) { status.innerHTML = '字幕軌：<b>尚未建立</b>'; return; }
     track.mode = on ? 'showing' : 'disabled';
     btn.setAttribute('aria-pressed', String(on));
     btn.textContent = on ? '字幕：開' : '字幕：關';
     status.innerHTML = `字幕軌：<b>${on ? '顯示' : '關閉'}</b>`;
   }
 
-  btn.addEventListener('click', () => setCC(track.mode !== 'showing'));
+  btn.addEventListener('click', () => setCC((track?.mode ?? 'disabled') !== 'showing'));
 
-  if (!track) { status.innerHTML = '字幕軌：<b>找不到 track</b>'; return; }
-  // 默认开启（track 上有 default，但有些浏览器不自动应用）
-  setCC(true);
-
-  // 列出全部 cue（能一眼看断句是否正确）
+  // load 事件挂在 <track> 元素上（TextTrack 不派发 load）；再补 cuechange / loadedmetadata，
+  // 防止 load 已经错过（浏览器在脚本执行前就加载完了）。
   const renderCues = () => {
+    const cues = track?.cues;
+    if (!cues || !cues.length) { status.innerHTML = '字幕軌：<b>載入中…</b>'; return; }
     tbody.innerHTML = '';
-    [...track.cues].forEach((c, i) => {
+    [...cues].forEach((c, i) => {
       const tr = document.createElement('tr');
       tr.dataset.start = c.startTime;
       tr.dataset.end = c.endTime;
@@ -114,10 +107,13 @@
       tr.lastElementChild.textContent = c.text;
       tbody.appendChild(tr);
     });
-    status.innerHTML = `字幕軌：<b>${track.cues.length} 條</b>`;
+    status.innerHTML = `字幕軌：<b>${cues.length} 條</b>`;
   };
-  if (track.cues && track.cues.length) renderCues();
-  else track.addEventListener('load', renderCues, {once: true});
+  if (trackEl) trackEl.addEventListener('load', renderCues);
+  if (track) track.addEventListener('cuechange', renderCues);
+  v.addEventListener('loadedmetadata', renderCues);
+  setCC(true);
+  renderCues();
 
   // 高亮当前 cue，方便核对"这一秒该显示哪句"
   v.addEventListener('timeupdate', () => {
