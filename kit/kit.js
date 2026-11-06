@@ -398,7 +398,24 @@ async function use(F,o={}){
     if(missing.length)warn(`虚构标记「${on.text}」有 ${missing.length} 处不在画面上（${missing.slice(0,3).join('、')}）：全片每一段都要常驻，不是只在开头`);
    }else fiction={on:false,display:disp};
   }
-  window.KIT_REPORT={shots:out.map(s=>({i:s.i,scene:s.scene,t0:+s.t0.toFixed(2),t1:+s.t1.toFixed(2),says:s.says,enter:s.enter})),warns:K.warns,policy,fiction};
+  // 报告里带每镜的 cue 明细：preflight 靠它判断"这个 cue 是不是落在声明它的那一镜里"，
+  // 而不是"落在任意镜头里"。cues 里只记结构信息（哪个 key、原串、解析到第几秒），不上屏。
+  const cuesOf=sp=>{
+   const out=[];
+   const walk=(v,key)=>{
+    if(typeof v==='string'&&v[0]==='@'){
+     let t=null,err=null;
+     try{t=+T(v).toFixed(3);}catch(e){err=e.message;}
+     out.push({key,raw:v,t,err});
+    }else if(Array.isArray(v))v.forEach((x,i)=>walk(x,`${key}[${i}]`));
+    else if(v&&typeof v==='object')for(const k in v)walk(v[k],key?`${key}.${k}`:k);
+   };
+   walk(sp,'');
+   return out;
+  };
+  window.KIT_REPORT={shots:out.map(s=>({i:s.i,scene:s.scene,t0:+s.t0.toFixed(2),t1:+s.t1.toFixed(2),says:s.says,enter:s.enter,
+    cues:(s.p&&cuesOf(s.p))??[]})),
+   warns:K.warns,policy,fiction};
   return out;
  };
  // 整片的提醒（不是禁令：每一条答得上"为什么这里就该这样"就留着）

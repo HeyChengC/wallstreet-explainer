@@ -7,6 +7,21 @@ import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} f
 const per = ch => /[㐀-鿿〇]/.test(ch) ? .235 : /[0-9]/.test(ch) ? .17 : /[A-Za-z]/.test(ch) ? .075
   : /[，、：；,:;]/.test(ch) ? .2 : /[。！？!?…]/.test(ch) ? .28 : /\s/.test(ch) ? .06 : .1;
 
+// 内容签名：和 temp_voice.py 用同一套结构（规范化对象，预检逐字段比，不靠 JSON 文本格式）
+// voice/rate 没写时按地区默认解析——否则"只写 region"的稿子签名永远对不上。
+const REGION_DEFAULT_VOICE = {taiwan: 'zh-TW-YunJheNeural', hongkong: 'zh-HK-WanLungNeural'};
+export function signatureOf(S) {
+  return {
+    pre: S.pre ?? 0,
+    voice: S.voice ?? (S.region && REGION_DEFAULT_VOICE[S.region]) ?? 'zh-CN-YunxiNeural',
+    rate: S.rate ?? '+0%',
+    title: S.title ?? null,
+    lines: (S.lines ?? []).map(l => [l.id ?? null, l.text ?? null, l.say ?? null, l.gap ?? null,
+      l.bite ? {pre: l.bite.pre ?? null, post: l.bite.post ?? null,
+                parts: (l.bite.parts ?? []).map(p => [p[0], +(+(p[1] ?? 0)).toFixed(3), (+(p[2] ?? 0)).toFixed(3), p[3], p[4]])} : null]),
+  };
+}
+
 export function stub(S) {
   let t = .15 + (S.pre ?? 0); const beats = [], inserts = []; let title = null;
   for (const ln of S.lines ?? []) {
@@ -22,7 +37,8 @@ export function stub(S) {
     }
     if (S.title?.after === ln.id) { title = {start: +t.toFixed(4), end: +(t + S.title.len).toFixed(4)}; t += S.title.len; }
   }
-  return {fps: 30, duration: +(t + .95).toFixed(4), pre: S.pre ?? 0, title, beats, inserts, stub: true};
+  return {fps: 30, duration: +(t + .95).toFixed(4), pre: S.pre ?? 0, title, beats, inserts,
+          signature: signatureOf(S), voice: S.voice ?? null, rate: S.rate ?? null, stub: true};
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

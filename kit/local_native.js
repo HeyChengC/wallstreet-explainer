@@ -185,7 +185,7 @@ K.scene('local-hero',{
    // 2) 人
    if(p.img){
     const pw=ph*ar;
-    h+=`<img src="${p.img}" style="position:absolute;left:${f1(px-pw/2)}px;top:${f1(py)}px;width:${f1(pw)}px;height:${f1(ph)}px;`+
+    h+=`<img data-role="person" src="${p.img}" style="position:absolute;left:${f1(px-pw/2)}px;top:${f1(py)}px;width:${f1(pw)}px;height:${f1(ph)}px;`+
      (p.rim?`filter:drop-shadow(3px 0 0 ${p.rim}) drop-shadow(-3px 0 0 ${p.rim}) drop-shadow(0 3px 0 ${p.rim}) drop-shadow(0 -3px 0 ${p.rim}) drop-shadow(0 20px 44px rgba(0,0,0,.72));`:'filter:drop-shadow(0 20px 44px rgba(0,0,0,.72));')+`">`;
    }
    else if(p.clip)h+=`<img src="${FB.fr(p.clip,Math.floor(Math.max(0,t-c.t0)*30)+1)}" style="position:absolute;left:${f1(px-620)}px;top:${f1(py)}px;width:1240px;height:${f1(ph)}px;object-fit:cover;object-position:50% 22%;filter:contrast(1.06) saturate(1.08) drop-shadow(0 20px 44px rgba(0,0,0,.6))">`;
@@ -239,8 +239,8 @@ K.scene('local-clash',{
    const cx=dir<0?430:1490;
    // 人物在 y 500 附近，短话压在人物胸口/下方但不进字幕带（936 起）
    const lineY=p.lineY??760, nameY=p.nameY??828;
-   let h=`<div style="position:absolute;left:${f1(cx)}px;top:520px;transform:translate(-50%,-50%) scale(${f3(a.sc)});opacity:${f3(a.o)}">`;
-   if(q.img)h+=`<img src="${q.img}" style="height:${f1(q.h??600)}px;`+
+   let h=`<div data-role="${dir<0?'person-left':'person-right'}" style="position:absolute;left:${f1(cx)}px;top:520px;transform:translate(-50%,-50%) scale(${f3(a.sc)});opacity:${f3(a.o)}">`;
+   if(q.img)h+=`<img data-role="person" src="${q.img}" style="height:${f1(q.h??600)}px;`+
     (q.rim?`filter:drop-shadow(3px 0 0 ${q.rim}) drop-shadow(-3px 0 0 ${q.rim}) drop-shadow(0 3px 0 ${q.rim}) drop-shadow(0 -3px 0 ${q.rim}) drop-shadow(0 18px 40px rgba(0,0,0,.7));`:'filter:drop-shadow(0 18px 40px rgba(0,0,0,.7));')+`">`;
    else if(q.clip)h+=`<img src="${FB.fr(q.clip,1+Math.floor(Math.max(0,t-c.t0)*30))}" style="width:${f1(q.w??500)}px;height:${f1(q.h??600)}px;object-fit:cover;object-position:50% 20%;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.7)">`;
    h+='</div>';

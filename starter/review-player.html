@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>字幕预览 · CC 开关测试</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0d1016; color: #e6e9ef;
+         font: 16px/1.6 "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 64px; }
+  h1 { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+  .sub { color: #8b93a3; font-size: 14px; margin-bottom: 20px; }
+  video { width: 100%; background: #000; border-radius: 8px; display: block; }
+  /* 字幕样式由 player 决定，这里只做"适中"的默认：不烧进画面 */
+  video::cue {
+    font-family: "Noto Sans TC", "Noto Sans HK", "Microsoft JhengHei", sans-serif;
+    font-weight: 700; font-size: 100%; line-height: 1.35;
+    color: #fff; background: rgba(0,0,0,.62);
+    text-shadow: 0 2px 4px #000, 0 0 2px #000;
+    padding: 2px 10px; border-radius: 4px;
+  }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+         margin: 14px 0 10px; }
+  button { font: inherit; font-weight: 700; padding: 8px 16px; border-radius: 6px;
+           border: 1.5px solid #3a4356; background: #1a202c; color: #e6e9ef; cursor: pointer; }
+  button[aria-pressed="true"] { background: #2f6bd1; border-color: #2f6bd1; color: #fff; }
+  button:focus-visible { outline: 2px solid #7fb2ff; outline-offset: 2px; }
+  .status { font-size: 14px; color: #9aa4b6; margin-left: auto; }
+  .status b { color: #7fb2ff; }
+  .hint { margin-top: 18px; padding: 14px 16px; border-radius: 8px;
+          background: #151b26; border: 1px solid #232c3b; font-size: 14px; color: #a7b0c0; }
+  .hint code { background: #0d1016; padding: 1px 6px; border-radius: 4px; color: #cfd6e2; }
+  .cue-list { margin-top: 18px; font-size: 14px; }
+  .cue-list table { width: 100%; border-collapse: collapse; }
+  .cue-list th, .cue-list td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #1e2635; }
+  .cue-list th { color: #8b93a3; font-weight: 600; }
+  .cue-list tr.on td { background: #1b2740; color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>字幕预览 · CC 开关测试</h1>
+  <p class="sub">影片本身没有烧录字幕；字幕来自 <code>&lt;track&gt;</code>，可以开关。用本地 HTTP 打开，<code>file://</code> 下浏览器会拒绝加载字幕。</p>
+
+  <video id="v" controls preload="metadata">
+    <!-- 下面两条由 build-player 脚本按实际文件名改写；保留 track 默认开启 -->
+    <track id="trk" kind="captions" srclang="zh" label="繁體字幕" src="captions.zh-TW.vtt" default>
+  </video>
+
+  <div class="bar">
+    <button id="cc" aria-pressed="true" aria-controls="v">字幕：開</button>
+    <span id="status" class="status" role="status" aria-live="polite">字幕軌：<b>載入中…</b></span>
+  </div>
+
+  <div class="cue-list">
+    <table>
+      <thead><tr><th>#</th><th>时间</th><th>文字</th></tr></thead>
+      <tbody id="cues"></tbody>
+    </table>
+  </div>
+
+  <div class="hint">
+    <b>怎么验</b>：按播放 → 确认字幕出现；点「字幕：關」→ 字幕消失、画面里也没有硬字幕（这是重点：clean 版不该有烧录字幕）；再点回「字幕：開」→ 字幕恢复，且当前时间对应的那条是对的。
+    <br>如果不能自动播放，先点一下播放按钮；浏览器要求用户交互才允许有声播放。
+    <br>命令行启动本地服务：<code>python -m http.server 8080</code>，然后打开 <code>http://127.0.0.1:8080/review-player.html</code>。
+  </div>
+</div>
+
+<script>
+(() => {
+  const v = document.getElementById('v');
+  const btn = document.getElementById('cc');
+  const status = document.getElementById('status');
+  const tbody = document.getElementById('cues');
+  const videoFile = window.__VIDEO__ || 'final_clean_720.mp4';
+
+  // 影片地址：优先 window.__VIDEO__（构建时写入），否则用同目录的默认名
+  if (!v.querySelector('source')) {
+    const s = document.createElement('source');
+    s.src = videoFile; s.type = 'video/mp4';
+    v.appendChild(s);
+  }
+
+  const track = v.textTracks[0];
+  const fmt = t => {
+    const m = Math.floor(t / 60), s = (t % 60).toFixed(1).padStart(4, '0');
+    return `${m}:${s}`;
+  };
+
+  function setCC(on) {
+    if (!track) return;
+    track.mode = on ? 'showing' : 'disabled';
+    btn.setAttribute('aria-pressed', String(on));
+    btn.textContent = on ? '字幕：開' : '字幕：關';
+    status.innerHTML = `字幕軌：<b>${on ? '顯示' : '關閉'}</b>`;
+  }
+
+  btn.addEventListener('click', () => setCC(track.mode !== 'showing'));
+
+  if (!track) { status.innerHTML = '字幕軌：<b>找不到 track</b>'; return; }
+  // 默认开启（track 上有 default，但有些浏览器不自动应用）
+  setCC(true);
+
+  // 列出全部 cue（能一眼看断句是否正确）
+  const renderCues = () => {
+    tbody.innerHTML = '';
+    [...track.cues].forEach((c, i) => {
+      const tr = document.createElement('tr');
+      tr.dataset.start = c.startTime;
+      tr.dataset.end = c.endTime;
+      tr.innerHTML = `<td>${i + 1}</td><td>${fmt(c.startTime)}–${fmt(c.endTime)}</td><td></td>`;
+      tr.lastElementChild.textContent = c.text;
+      tbody.appendChild(tr);
+    });
+    status.innerHTML = `字幕軌：<b>${track.cues.length} 條</b>`;
+  };
+  if (track.cues && track.cues.length) renderCues();
+  else track.addEventListener('load', renderCues, {once: true});
+
+  // 高亮当前 cue，方便核对"这一秒该显示哪句"
+  v.addEventListener('timeupdate', () => {
+    for (const tr of tbody.children) {
+      const s = +tr.dataset.start, e = +tr.dataset.end;
+      tr.classList.toggle('on', v.currentTime >= s && v.currentTime < e);
+    }
+  });
+
+  // 没有 CC 按钮时也让它可见：若浏览器原生控件有 CC 图标，本按钮仍在页面里，不烧进画面
+})();
+</script>
+</body>
+</html>

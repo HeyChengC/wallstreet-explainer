@@ -152,7 +152,26 @@ for ln in S['lines']:
     if S.get('title', {}).get('after') == lid:
         title = {'start': round(t, 4), 'end': round(t + S['title']['len'], 4)}; t += S['title']['len']
 meta_p.write_text(json.dumps(meta, ensure_ascii=False, indent=1), 'utf-8')
-tl = {'fps': 30, 'duration': round(t + .95, 4), 'pre': S.get('pre', 0.0), 'title': title, 'beats': beats, 'inserts': inserts}
+# 内容签名：文案/voice/rate/gap/bite 任何一项变了，旧时间线就不该再被当成有效。
+# 存成**规范化对象**（不是字符串）——Python 和 JS 的 JSON 序列化格式不同，字符串必然对不上。
+# 预检里把两边都按键排序后逐项比，不靠两个语言的默认格式。
+def _sig_bite(b):
+    parts = []
+    for p in (b.get('parts') or []):
+        # [源文件, 入点秒, 时长, 中文字幕, 增益dB]
+        parts.append([p[0], round(float(p[1]), 3), round(float(p[2]), 3), p[3], p[4]])
+    return {'pre': b.get('pre'), 'post': b.get('post'), 'parts': parts}
+
+signature = {
+    'pre': S.get('pre', 0.0),
+    'voice': VOICE,
+    'rate': RATE,
+    'title': S.get('title'),
+    'lines': [[l.get('id'), l.get('text'), l.get('say'), l.get('gap'),
+               _sig_bite(l['bite']) if l.get('bite') else None] for l in S.get('lines', [])],
+}
+tl = {'fps': 30, 'duration': round(t + .95, 4), 'pre': S.get('pre', 0.0), 'title': title, 'beats': beats,
+      'inserts': inserts, 'signature': signature, 'voice': VOICE, 'rate': RATE}
 (D / 'timeline.json').write_text(json.dumps(tl, ensure_ascii=False, indent=1), 'utf-8')
 for b in beats: print(f"{b['id']:6s} {b['start']:7.2f}–{b['end']:6.2f}  {b['text'][:28]}")
 for i in inserts: print(f"{i['id']:6s} {i['start']:7.2f}–{i['end']:6.2f}  原声 {len(i['parts'])} 段")

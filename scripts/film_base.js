@@ -37,9 +37,15 @@ async function init(o={}){
  await Promise.all((o.preload??[]).map(n=>new Promise(r=>{const im=new Image();im.onload=im.onerror=r;im.src=A+n;})));
  await Promise.all((o.fonts??[]).map(f=>document.fonts.load(f)));
 
- // 字幕：一句超过 maxLen 个字就拆短语，卡着字的时刻替换；原声插段用它自己的中文字幕
- // 拆法：先按逗号/问号/冒号切；**没有标点的长句也按字数硬切**（本地版本字幕短，一行放不下 18 字）。
- // subMax 可由 film.js 传（港台版 8–15），subLines=1 表示单行。
+ // ---------- 字幕 ----------
+ // caption_mode：
+ //   'sidecar'（默认）——**不画字幕**。口播字幕走独立的 SRT/VTT（export_captions.py），
+ //                        播放器可以开关。花字（.k-num / local-hero 的 headline 等）照常画，
+ //                        它们是画面内容，不是字幕。
+ //   'burned'         ——把字幕烧进画面（旧行为），给"就是要硬字幕"的场合。
+ //   'off'            ——完全不要字幕（既不上屏也不导出，导出由脚本自己判断）。
+ // 注意：sidecar 下不画 .sub，但字幕**照常有**——在 captions.<lang>.srt/.vtt 里。
+ const captionMode=o.captionMode??o.caption_mode??'sidecar';
  const maxLen=o.subMax??20;
  const SUBS=T.beats.map(b=>({start:b.start,end:b.end+.15,text:b.text,id:b.id}));
  for(const i of T.inserts||[])for(const p of i.parts)SUBS.push({start:p.start,end:p.end,text:p.sub,id:null});
@@ -79,7 +85,11 @@ async function init(o={}){
   for(let i=0;i<chunks.length;i++){if(t>=bb.chars[Math.min(chunks[i].at,bb.chars.length-1)][1]-.05)idx=i;}
   return chunks[idx].text.replace(/[，。：、；？！,;:?!]$/,'');
  }
- const subAt=t=>{const s=SUBS.find(x=>t>=x.start&&t<x.end);return s?{text:s.text,html:`<div class="sub">${lat(subText(s,t))}</div>`}:null};
+ const subAt=t=>{
+  if(captionMode!=='burned')return null;   // sidecar / off：不画字幕，交给独立字幕文件
+  const s=SUBS.find(x=>t>=x.start&&t<x.end);
+  return s?{text:s.text,html:`<div class="sub">${lat(subText(s,t))}</div>`}:null;
+ };
 
  // 镜头登记：shot(起, 止, t=>这一帧的 HTML)
  const shots=[];const shot=(t0,t1,f)=>{shots.push({t0,t1,f});return f;};
