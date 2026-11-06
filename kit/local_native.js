@@ -192,14 +192,19 @@ K.scene('local-hero',{
    // 3) 顶部小字：**不做**。左上/右上常驻的小字就是角标，用户要求和 overlays:none 一致。
    //    主题信息放进巨字本身（正文大标题），不放角落。
    // 4) 巨字（在人物之上，可以压到他身上）
+   // 文字区：x ∈ [40, p.textRight ?? 980]。字号按文字区宽度自动收，保证不出边。
+   const textRight=p.textRight??980;
+   const textW=Math.max(240,textRight-40);
+   const hSize=Math.min(p.headlineSize??168,fitPx(String(p.headline),'han',p.headlineSize??168,textW,.02));
+   const sSize=p.sub?Math.min(p.subSize??96,fitPx(String(p.sub),'han',p.subSize??96,textW,.02)):null;
    const s1=slam(t,tSlam,{dur:.3,from:.72,over:1.14});
-   const lx=p.headlineX??560;
+   const lx=p.headlineX??Math.min(560,40+textW/2);
    h+=`<div style="position:absolute;left:${f1(lx)}px;top:${f1(p.headlineY??520)}px;transform:translate(-50%,-50%) rotate(${p.headlineRot??-2.5}deg) scale(${f3(s1.sc)});opacity:${f3(s1.o)}">`+
-    heavyText(String(p.headline),{size:p.headlineSize??168,fill:p.fill??'#fff',stroke:p.stroke??9,shadow:p.shadow??12,glow:p.glow??24})+'</div>';
+    heavyText(String(p.headline),{size:hSize,fill:p.fill??'#fff',stroke:p.stroke??9,shadow:p.shadow??12,glow:p.glow??24})+'</div>';
    // 副字：往上放（默认在巨字**上方**），不和字幕抢
    if(p.sub){const s2=slam(t,tSlam+.18,{dur:.28,from:.8,over:1.12});
-    h+=`<div style="position:absolute;left:${f1(lx)}px;top:${f1((p.headlineY??520)-(p.headlineSize??168)*.86)}px;transform:translate(-50%,-50%) rotate(${p.subRot??1.5}deg) scale(${f3(s2.sc)});opacity:${f3(s2.o)}">`+
-     heavyText(String(p.sub),{size:p.subSize??96,fill:p.accent??'#ffd60a',stroke:p.stroke??8,shadow:p.shadow??10,glow:p.glow??18})+'</div>';}
+    h+=`<div style="position:absolute;left:${f1(lx)}px;top:${f1((p.headlineY??520)-hSize*.86)}px;transform:translate(-50%,-50%) rotate(${p.subRot??1.5}deg) scale(${f3(s2.sc)});opacity:${f3(s2.o)}">`+
+     heavyText(String(p.sub),{size:sSize,fill:p.accent??'#ffd60a',stroke:p.stroke??8,shadow:p.shadow??10,glow:p.glow??18})+'</div>';}
    // 5) 贴纸
    if(p.sticker)h+=sticker(t,tSlam+.3,{text:p.sticker,x:p.stickerX??1700,y:p.stickerY??250,size:p.stickerSize??230,color:p.stickerColor??'#ffd60a'});
    // 底色：写了 bgC1/bgC2 就画一块红黄撞色底，否则用 tone
@@ -228,15 +233,16 @@ K.scene('local-clash',{
  beats:p=>A(p.at).length+1,
  make(p,c){
   const ats=A(p.at).map(a=>c.at(a));
-  const side=(q,side,tt)=>{
-   const a=slam(tt,tt,{dur:.3,from:.7,over:1.13});
-   const cx=side<0?430:1490;
+  // side 必须同时拿到「当前帧 t」和「这一边该出现的时刻」——只传一个必然算错 slam 的进度
+  const side=(q,dir,t,enterT)=>{
+   const a=slam(t,enterT,{dur:.3,from:.7,over:1.13});
+   const cx=dir<0?430:1490;
    // 人物在 y 500 附近，短话压在人物胸口/下方但不进字幕带（936 起）
    const lineY=p.lineY??760, nameY=p.nameY??828;
-   let h=`<div style="position:absolute;left:${f1(cx)}px;top:500px;transform:translate(-50%,-50%) scale(${f3(a.sc)});opacity:${f3(a.o)}">`;
+   let h=`<div style="position:absolute;left:${f1(cx)}px;top:520px;transform:translate(-50%,-50%) scale(${f3(a.sc)});opacity:${f3(a.o)}">`;
    if(q.img)h+=`<img src="${q.img}" style="height:${f1(q.h??600)}px;`+
-    (q.rim?`filter:drop-shadow(3px 0 0 ${q.rim}) drop-shadow(-3px 0 0 ${q.rim}) drop-shadow(0 3px 0 ${q.rim}) drop-shadow(0 -3px 0 ${q.rim}) drop-shadow(0 18px 40px rgba(0,0,0,.7));`:'filter:drop-shadow(0 18px 40px rgba(0,0,0,.7));')+`"></div>`;
-   else if(q.clip)h+=`<img src="${FB.fr(q.clip,1+Math.floor(Math.max(0,tt-c.t0)*30))}" style="width:${f1(q.w??500)}px;height:${f1(q.h??600)}px;object-fit:cover;object-position:50% 20%;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.7)">`;
+    (q.rim?`filter:drop-shadow(3px 0 0 ${q.rim}) drop-shadow(-3px 0 0 ${q.rim}) drop-shadow(0 3px 0 ${q.rim}) drop-shadow(0 -3px 0 ${q.rim}) drop-shadow(0 18px 40px rgba(0,0,0,.7));`:'filter:drop-shadow(0 18px 40px rgba(0,0,0,.7));')+`">`;
+   else if(q.clip)h+=`<img src="${FB.fr(q.clip,1+Math.floor(Math.max(0,t-c.t0)*30))}" style="width:${f1(q.w??500)}px;height:${f1(q.h??600)}px;object-fit:cover;object-position:50% 20%;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.7)">`;
    h+='</div>';
    // 短话（在人物下方，但整个块在字幕带之上）
    h+=`<div style="position:absolute;left:${f1(cx)}px;top:${f1(lineY)}px;transform:translate(-50%,-50%) scale(${f3(a.sc)});opacity:${f3(a.o)}">`+
@@ -250,8 +256,8 @@ K.scene('local-clash',{
    if(t>=hitT)sh=shake(t,hitT,{amp:14,freq:26});
    const cam={x:960+sh[0],y:520+sh[1],s:1.02},cp={...cam,s:1.02};
    let h='';
-   h+=side(p.left,-1,ats[0]??c.t0+.1);
-   h+=side(p.right,1,ats[1]??c.t0+.55);
+   h+=side(p.left,-1,t,ats[0]??c.t0+.1);
+   h+=side(p.right,1,t,ats[1]??c.t0+.55);
    // 中间冲突词
    if(p.clash){const a=slam(t,hitT,{dur:.3,from:.5,over:1.2});
     h+=`<div style="position:absolute;left:960px;top:520px;transform:translate(-50%,-50%) rotate(-6deg) scale(${f3(a.sc)});opacity:${f3(a.o)}">`+
