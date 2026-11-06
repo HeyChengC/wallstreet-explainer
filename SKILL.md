@@ -1,6 +1,6 @@
 ---
 name: political-commentary
-description: 港台时政评论短片（1–3 分钟、16:9）。地区决定语言：台湾用繁体 + 台湾国语 + Noto Sans TC Black，香港用**书面粤语** + zh-HK 音色 + Noto Sans HK Black。再选立场（neutral / 台湾绿营蓝营 / 香港建制泛民 / custom）、风格（objective / traffic / outrage / adversarial，可组合）、情绪与粗口档位，把"发生了什么—最关键的证据—各方公开立场—分歧与影响—我的判断—下一步看什么"做成一条片。本地自媒体包装：人物抠像大头上封面、粗描边巨字、slam/震动/爆裂、900 字重黑描边字幕；角标可选（overlays full 显示来源与性质，none 则全部不上屏、出处只留 editorial.json）。立场可以鲜明、可以尖锐批评，但不改事实、原话和身份；未证实的爆料要标"未证实"，要编内幕走 fiction 并按 overlays 配置标注。工具：新闻截图与荧光笔、人物抠像、逐帧渲染、配音时间线、混音、封面露；配 editorial.json 记录来源与事实（check_editorial.py 校验）。用户说"时政评论""港台评论""做条时政视频""像少康战情室那种""香港政策拆解""台湾议题交锋""粤语评论""带点内幕感""强对立""愤慨一点""不要角标""虚构政治剧情"时使用。
+description: 港台时政评论短片（1–3 分钟、16:9）。地区决定语言：台湾用繁体 + 台湾国语 + Noto Sans TC Black，香港用**书面粤语** + zh-HK 音色 + Noto Sans HK Black。再选立场（neutral / 台湾绿营蓝营 / 香港建制泛民 / custom）、风格（objective / traffic / outrage / adversarial，可组合）、情绪与粗口档位，把"发生了什么—最关键的证据—各方公开立场—分歧与影响—我的判断—下一步看什么"做成一条片。画面按论点配：真实动态、原声片段、原文摘录卡、图解、少量人物抠像。**字幕默认独立文件**（final_clean_720.mp4 + captions.srt/.vtt + 可开关的 review-player），不烧进画面；角标可选（overlays full/none）。立场可以鲜明、可以尖锐批评，但不改事实、原话和身份；未证实的爆料要标"未证实"。交付前跑 preflight 预检，并按 self-review 复核卡自己看语义与画面。工具：新闻截图与荧光笔、人物抠像、逐帧渲染、配音时间线、字幕导出、封面、混音。用户说"时政评论""港台评论""做条时政视频""像少康战情室那种""香港政策拆解""台湾议题交锋""粤语评论""带点内幕感""强对立""愤慨一点""不要角标""字幕要能关""虚构政治剧情"时使用。
 ---
 
 # 时政评论（political-commentary）
@@ -36,7 +36,7 @@ description: 港台时政评论短片（1–3 分钟、16:9）。地区决定语
 | 语音 | `zh-TW-YunJheNeural`（男）/ `zh-TW-HsiaoChenNeural`（女） | `zh-HK-WanLungNeural`（男）/ `zh-HK-HiuMaanNeural`（女） |
 | 正文 | **台湾国语写法**：影片、網路、立委、質詢、財源、期程 | **书面粤语**：唔、嘅、咗、佢、啲、喺；講咗咁耐、點解又押後 |
 | 字体 | Noto Sans TC Black（900） | Noto Sans HK Black（900） |
-| 字幕 | 900 字重、80px、7px 黑描边、`paint-order` | 同左 |
+| 字幕 | 默认不烧进画面（sidecar）；字幕文件按完整短语断句 | 同左 |
 
 **硬规矩**：
 
@@ -68,7 +68,33 @@ K.politics.display('no-badges');
 
 `--check` 会打印 `虚构标记：已关闭（display:'no-badges'…）`。
 
-## 立场怎么用，不越哪条线
+## 字幕：默认独立文件，不烧进画面
+
+**默认 `caption_mode:'sidecar'`** —— 成片是 `final_clean_720.mp4`（无烧录字幕），字幕走 `captions.zh-TW.srt` / `.vtt`，配 `review-player.html` 验开关（关掉后画面里也不该有字）。
+
+字幕按**完整短语**分段：`script.json` 每条 line 写 `caption_segments`（0-based、end exclusive），`export_captions.py` 从真实逐字时刻算 start/end。人名、固定词、数字+单位不拆（`蔣萬安`、`跨局處會議`、`百分之七`）。
+
+只在明确要硬字幕时才用 `caption_mode:'burned'`。**注意它是 legacy 路径**：字幕仍由 `film_base.js` 的 `chunksOf` 按字数切，**不读 `caption_segments`**，字号也是旧的 80px——它的断句和 sidecar 的 SRT/VTT 会不一致。要硬字幕又要求断句一致，得先把 `chunksOf` 改成读 `caption_segments`（本版没做）。
+
+**花字 ≠ 字幕**：`headline`、`number` 这些是画面内容，CC 关掉也不该消失；反过来说，不能把整段旁白都做成巨字。
+
+细节：`references/local-native-style.md` 的「字幕」一节、`scripts/export_captions.py` 开头。
+
+## 素材：画面跟着论点走
+
+一条片里应该有几类画面，不是每镜同一张抠像：
+
+| 类型 | 用在什么话题上 |
+|---|---|
+| 真实动态（辩论台/记者会/现场） | 讲到这个人做了什么、说了什么 |
+| 原声（3–6 秒） | 关键的、能把论点推进一句；旁白在这段停 |
+| 原文摘录卡 | 引文件、公报、逐字稿；标明是摘录不是网页截图 |
+| 图解（`panel`） | 出席率清单、层级关系、统计口径三栏 |
+| 人物抠像 | 钩子与落点，**不连续覆盖每一句旁白** |
+
+**原声要和画面对得上**：帧序列要从和 WAV 同一段源片、同一入点抽（用 ASR 核对说了什么），别拿别处的画面配这段音。
+
+素材怎么找、抓不到怎么办：`references/politics-sourcing.md`。
 
 - 立场决定**你更看重什么**：谁的责任、哪种代价更要紧、什么算证据不足。它不决定事件时间、票数、原话、身份。
 - **可以得出"一方证据更强"的结论**。neutral 不等于永远五五开，强行平衡本身就是一种歪曲。
@@ -198,22 +224,43 @@ node scripts/preflight.mjs --dir <片子> --stage delivery   # 交片前
 
 **不改用户选的立场/情绪，不为了过检查偷偷加角标，不谎称验过。**
 
-## 常用命令
+## 常用命令（一条片从头到尾）
 
 ```powershell
-node scripts/new_film.mjs <片子目录> --politics          # 建时政片子：5 镜起点 + editorial.json + 本地虚构材料
-node scripts/new_film.mjs <片子目录> --region taiwan     # 港台本地版：繁体正文 + zh-TW 男声 + 无角标
-node scripts/new_film.mjs <片子目录> --region hongkong   # 港台本地版：书面粤语 + zh-HK 男声 + 无角标
-node scripts/timeline_stub.mjs <片子>/script.json        # 没配音时先估时间线
-python scripts/temp_voice.py <片子>/script.json          # edge-tts 临时配音 + 逐字时间线（用 script.json 里的 voice）
-python scripts/cutout.py <图> <out.png>                  # 人物抠像（封面大头用）
-python scripts/check_editorial.py <片子>/editorial.json  # 事实底稿：0 过 / 1 停 / 2 看提醒
-node scripts/render.mjs --dir <片子> --check-policy politics --check   # 镜头表（时政策略）
-node scripts/render.mjs --dir <片子> --check-policy politics --sheet   # 每镜三帧
-node scripts/render.mjs --dir <片子> --cover             # 封面 1280×720
-node scripts/render.mjs --dir <片子> --cover --cover-h 1080             # 封面 1920×1080
-node scripts/render.mjs --dir <片子> --check-policy politics --video --h 720
+# 建片子
+node scripts/new_film.mjs <片子目录> --region taiwan     # 或 --region hongkong；--politics 是虚构样例起点
+
+# 文案 → 时间线
+node scripts/timeline_stub.mjs <片子>/script.json        # 没配音时先估
+python scripts/temp_voice.py <片子>/script.json          # edge-tts 配音 + 逐字时间线（用 script.json 的 voice/region）
+
+# 事实底稿 + 预检
+python scripts/check_editorial.py <片子>/editorial.json                  # 0 过 / 1 停 / 2 看提醒
+node scripts/preflight.mjs --dir <片子> --stage draft                    # 0 干净 / 1 必须修 / 2 待复核
+
+# 画面
+node scripts/render.mjs --dir <片子> --check-policy politics --check
+node scripts/render.mjs --dir <片子> --check-policy politics --sheet
+node scripts/render.mjs --dir <片子> --page cover.html --cover           # 封面 1280×720
+node scripts/render.mjs --dir <片子> --page cover.html --cover --cover-h 1080
+
+# 字幕（独立文件，不烧进画面）
+python scripts/export_captions.py <片子>                 # → captions.zh-TW.srt / .vtt / captions.json
+Copy-Item starter/review-player.html <片子>/out/         # 播放器要和影片、字幕同目录
+
+# 成片
+node scripts/render.mjs --dir <片子> --check-policy politics --video --h 720   # 会先跑一遍预检
 python scripts/mix.py <片子> --check
+ffmpeg -i <片子>/out/visual_720.mp4 -i <片子>/mix_master.wav `
+  -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart <片子>/out/final_clean_720.mp4
+node scripts/preflight.mjs --dir <片子> --stage delivery                 # 交片前最后一道
+```
+
+**验字幕开关**（关键：关掉后画面里也不该有字）：
+
+```powershell
+cd <片子>/out; python -m http.server 8080
+# 浏览器打开 http://127.0.0.1:8080/review-player.html → 播放 → 点「字幕：關」→ 字幕消失
 ```
 
 `--politics` 建出来的起点是**虚构样例**（可离线跑通）：换成真实题材时，把 `editorial.json` 的 `content_mode` 改成 `factual`、删掉 `film.js` 里的 `K.politics.fiction(...)`、`sources` 换成真实来源。
@@ -227,7 +274,7 @@ python scripts/mix.py <片子> --check
 
 到新环境先花五分钟验：**网页截图**、**PDF 下载**、**视频下载**。平台和站点的可访问性会随环境、区域、时间变化，别假设上一份笔记还适用。
 
-时政片默认走**页面截图 + PDF 原页**，不是下视频。官方录像路径在有权限的环境里可用；遇到平台人机验证就换降级路径（摘录卡、自绘图表），标清楚哪些是引用、哪些是自制。详见 `references/politics-sourcing.md`。
+**时政片要的不是"有没有下到视频"，是画面能不能对上论点**：真实动态、原声、原文、图解各用在合适的地方（见上面"素材：画面跟着论点走"）。视频平台能下就用官方片段，下不到就走页面截图/PDF/摘录卡，标清楚哪些是引用、哪些是自制。详见 `references/politics-sourcing.md`。
 
 ## 字体和本机配置
 

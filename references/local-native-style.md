@@ -49,13 +49,9 @@
 
 **YouTube 等平台的 CC 要单独上传 SRT/VTT**；不承诺 MP4 里的字幕轨会被平台自动读取。
 
-`caption_mode:'burned'` 是显式备用，只在"就是要硬字幕"时用。这时：
+`caption_mode:'burned'` 是**legacy 备用**，只在"就是要硬字幕"时用。**它目前不读 `caption_segments`**——仍走 `film_base.js` 的 `chunksOf`（按标点 + 字数切），字号仍是旧的 80px，和 sidecar 的 SRT/VTT 断句不一致。要两边一致，得先把 `chunksOf` 改成读 `caption_segments`；本版没做，所以 burned 只当作"临时看片"用，不当正式交付。
 
-| 项 | 值 |
-|---|---|
-| 字号 | 44–56px（1920 设计；720 输出约 29–37） |
-| 描边 | 3–4px 黑描边，**必须 `paint-order:stroke fill`** |
-| 每块 | 按完整短语断，**不按字数硬切** |
+用户这轮主要交付的是 sidecar，不需要再生成长 burned 片。
 
 **花字 ≠ 字幕。** `.k-num`、`local-hero` 的 `headline` 这些是画面内容（强调点），不归 caption track 管；CC 关掉它们也不该消失。反过来说，不能把整段旁白都做成巨字——那样 CC 关了画面里还全是字。
 
