@@ -1,0 +1,41 @@
+{
+ "config": {
+  "region": "general",
+  "stance": "neutral",
+  "styles": ["objective"],
+  "emotion": 1,
+  "profanity": "none",
+  "content_mode": "fiction",
+  "fiction_marker": "虛構演繹 · 人物與情節均為虛構",
+  "language": "zh-TW",
+  "duration_seconds": 123,
+  "as_of": "2026-11-06T14:00:00+08:00",
+  "note": "示例片：海岚市是虚构城市，全部来源标 synthetic，不是真实机构，不指向任何现实政府或政党。"
+ },
+ "sources": [
+  {"id": "s1", "url": "assets/docs/traffic-white-paper.md", "publisher": "海嵐市政府（虚构）", "title": "海嵐交通白皮書 2026–2030（測試材料）",
+   "published_at": "2026-09-16", "accessed_at": "2026-11-06", "source_type": "synthetic",
+   "note": "本地虚构白皮书，为示例片合成；不伪装真实公报，画面用摘录卡排版，不冒充网页截图。"},
+  {"id": "s2", "url": "assets/docs/budget-note.md", "publisher": "海嵐財政局（虚构）", "title": "中期預算說明（測試材料）",
+   "published_at": "2025-11-20", "accessed_at": "2026-11-06", "source_type": "synthetic",
+   "note": "本地虚构预算说明；用于演示把支出挂在收入项下这类可核验的细节。"},
+  {"id": "s3", "url": "assets/docs/watch-report.md", "publisher": "海嵐觀察（虚构）", "title": "白皮書逐頁核對（測試材料）",
+   "published_at": null, "accessed_at": "2026-11-06", "source_type": "synthetic",
+   "note": "虚构市民团体；发布日期故意留空，演示 published_at 未知时是警告而不是错误。"}
+ ],
+ "claims": [
+  {"id": "c1", "kind": "fiction", "text": "白皮書 147 頁、26 次提及過海隧道、4 次提及收費，但沒有任何具體費率、收費起始日或測算數字。",
+   "beat_ids": ["b07", "b08", "b09"], "source_ids": ["s1", "s3"], "event_date": "2026-09-16"},
+  {"id": "c2", "kind": "fiction", "text": "中期預算說明把隧道維護支出列在通行費收入項下。",
+   "beat_ids": ["b05", "b06"], "source_ids": ["s2"], "event_date": "2025-11-20"},
+  {"id": "c3", "kind": "fiction", "text": "交通局在記者會上說收費方案另行公布、分階段推進。",
+   "beat_ids": ["b03", "b10"], "source_ids": ["s1"]},
+  {"id": "c4", "kind": "fiction", "text": "市議會交通委員會要求三個月內交出收費測算全文。",
+   "beat_ids": ["b04", "b11"], "source_ids": ["s1"]},
+  {"id": "c5", "kind": "fiction", "text": "市民團體擔心方案通過後收費變成技術調整，不再需要議會投票。",
+   "beat_ids": ["b13", "b16", "b17"], "source_ids": ["s3"]},
+  {"id": "c6", "kind": "analysis", "text": "這一輪不會立刻收費，但收費的開關已經裝好；十二月政策簡報是關鍵觀察點。",
+   "beat_ids": ["b18", "b19", "b20"], "source_ids": ["s2"],
+   "reasoning": "白皮書 4 次提到收費卻不給費率與起始日、中期預算已把維護支出掛在通行費收入項下、議會要求交測算——三件事指向同一方向，但都沒有公布時間表，所以說開關裝好，不是說馬上收費。"}
+ ]
+}
