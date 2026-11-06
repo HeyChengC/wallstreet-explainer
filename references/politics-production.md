@@ -149,7 +149,14 @@ node scripts/render.mjs --dir <片子> --check-policy politics --video --h 720
 默认 `caption_mode:'sidecar'`，影片不烧录字幕：
 
 ```powershell
-python scripts/export_captions.py <片子>        # → captions.zh-TW.srt / .vtt / captions.json
+python scripts/export_captions.py <片子>        # → <片子>/captions.zh-TW.srt / .vtt / captions.json
+```
+
+**字幕写在片子根目录**，播放器在 `out/` 里读同目录，所以要拷过去：
+
+```powershell
+Copy-Item starter/review-player.html <片子>/out/
+Copy-Item <片子>/captions.*.srt,<片子>/captions.*.vtt,<片子>/captions.json <片子>/out/ -Force
 ```
 
 在 `script.json` 的每条 line 上写 `caption_segments`（完整短语，0-based、end exclusive），导出脚本按真实逐字时刻算 start/end。**没有 `caption_segments` 时只出草稿**，并标 `review_required`——草稿是按标点猜的，不能当终稿。
@@ -159,10 +166,11 @@ python scripts/export_captions.py <片子>        # → captions.zh-TW.srt / .vt
 验证开关：
 
 ```powershell
-Copy-Item starter/review-player.html <片子>/out/
 cd <片子>/out; python -m http.server 8080
 # 打开 http://127.0.0.1:8080/review-player.html，播放 → 点「字幕：關」→ 字幕消失、画面里也没字
 ```
+
+**播放器要按实际片改**，别照台湾 720 模板直接开：香港片 `<track srclang="zh-HK" src="captions.zh-HK.vtt">`（文件名按 `script.region` 起，不改会 404）；1080 成片把 `<source src>` 换成 `final_clean_1080.mp4`。
 
 ## 站 7：成片
 

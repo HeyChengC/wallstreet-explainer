@@ -156,13 +156,30 @@ python scripts/export_captions.py <片子>          # → captions.zh-TW.srt / .
 
 字幕按 `script.json` 里每条 line 的 `caption_segments`（完整短语、0-based、end exclusive）从真实逐字时刻导出。没有 `caption_segments` 时只做保守草稿并标 `review_required`；漏字、重叠、越界、文字对不上都会**直接报错且不写文件**。
 
+字幕写在**片子根目录**，播放器在 `out/`，所以复制时要带上字幕：
+
+```powershell
+Copy-Item starter/review-player.html <片子>/out/
+Copy-Item <片子>/captions.*.srt,<片子>/captions.*.vtt,<片子>/captions.json <片子>/out/ -Force
+```
+
 验证字幕开关：
 
 ```powershell
-# out/ 里有 final_clean_720.mp4 + captions.zh-TW.vtt + review-player.html
+# out/ 里现在有 final_clean_720.mp4 + captions.zh-TW.vtt + review-player.html
 cd <片子>/out; python -m http.server 8080
 # 打开 http://127.0.0.1:8080/review-player.html —— 播放 → 点「字幕：關」→ 字幕消失、画面里也没有硬字幕
 ```
+
+**播放器要按实际片改**，别照台湾 720 模板直接开：
+
+| 改什么 | 台湾 | 香港 |
+|---|---|---|
+| `<track srclang>` | `zh-TW` | `zh-HK` |
+| `<track src>` | `captions.zh-TW.vtt` | `captions.zh-HK.vtt` |
+| `<source src>` | `final_clean_720.mp4` | 同左 |
+
+香港片的字幕文件名是 `captions.zh-HK.*`（按 `script.region` 起名），不改播放器会 404。
 
 平台 CC（YouTube 等）要单独上传 SRT/VTT；不承诺 MP4 内嵌字幕轨会被平台自动读取。
 

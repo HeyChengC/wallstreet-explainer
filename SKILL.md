@@ -245,8 +245,10 @@ node scripts/render.mjs --dir <片子> --page cover.html --cover           # 封
 node scripts/render.mjs --dir <片子> --page cover.html --cover --cover-h 1080
 
 # 字幕（独立文件，不烧进画面）
-python scripts/export_captions.py <片子>                 # → captions.zh-TW.srt / .vtt / captions.json
-Copy-Item starter/review-player.html <片子>/out/         # 播放器要和影片、字幕同目录
+python scripts/export_captions.py <片子>                 # → <片子>/captions.zh-TW.srt / .vtt / captions.json
+# 播放器要和影片、字幕**在同一个目录**（字幕导出在片根，播放器读的是同目录）：
+Copy-Item starter/review-player.html <片子>/out/
+Copy-Item <片子>/captions.*.srt,<片子>/captions.*.vtt,<片子>/captions.json <片子>/out/ -Force
 
 # 成片
 node scripts/render.mjs --dir <片子> --check-policy politics --video --h 720   # 会先跑一遍预检
@@ -262,6 +264,16 @@ node scripts/preflight.mjs --dir <片子> --stage delivery                 # 交
 cd <片子>/out; python -m http.server 8080
 # 浏览器打开 http://127.0.0.1:8080/review-player.html → 播放 → 点「字幕：關」→ 字幕消失
 ```
+
+`review-player.html` 里的三个地方要按实际片改，别照台湾 720 模板直接开：
+
+| 改什么 | 台湾 | 香港 |
+|---|---|---|
+| `<track srclang>` | `zh-TW` | `zh-HK` |
+| `<track src>` | `captions.zh-TW.vtt` | `captions.zh-HK.vtt` |
+| `<source src>`（1080 成片） | `final_clean_1080.mp4` | 同左 |
+
+香港片的字幕文件是 `captions.zh-HK.srt/.vtt`（`export_captions.py` 按 `script.region` 起名），播放器不改会 404。
 
 `--politics` 建出来的起点是**虚构样例**（可离线跑通）：换成真实题材时，把 `editorial.json` 的 `content_mode` 改成 `factual`、删掉 `film.js` 里的 `K.politics.fiction(...)`、`sources` 换成真实来源。
 `--region` 建出来的起点是**真实题材脚手架**：正文已经是繁体/粤语，`sources` 是空的——`check_editorial` 会警告"还没填来源"，填完才算数。
