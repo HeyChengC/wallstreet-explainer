@@ -133,22 +133,49 @@ python scripts/cutout.py assets/img/presser.jpg assets/img/person.png
 
 ```powershell
 python scripts/check_editorial.py <片子>/editorial.json                       # 0 过 / 1 停 / 2 看提醒
-node scripts/render.mjs --dir <片子> --check-policy politics --check          # 镜头表（时政策略）
-node scripts/render.mjs --dir <片子> --check-policy politics --sheet          # 每镜三帧，自己先看
+node scripts/preflight.mjs --dir <片子> --stage draft                          # 写镜头表时
+node scripts/preflight.mjs --dir <片子> --stage delivery                       # 交片前
+node scripts/render.mjs --dir <片子> --check-policy politics --check
+node scripts/render.mjs --dir <片子> --check-policy politics --sheet
 ```
 
 `--check-policy politics` 关掉财经配额，换成证据镜要挂 `sourceIds` 这类检查。不写就用上游默认，财经片照旧。
 
+**预检查的是程序能证明的**（页面报错、镜头空档、cue 越界、人物是否真可见、字幕计划、成片音视频流与封面尺寸）。**语义和画面要你自己按 `references/self-review.md` 复核**，结论写进 `out/review.json` 的 `covers`（每项要有实际文字证据，`true` 不算）。预检核对 `input_hash`：改了画面或素材，旧复核会自动失效。
+
+退出码统一：**0 干净 / 1 有必须修的 / 2 只有待复核的**。
+
+## 字幕
+
+默认**不烧进画面**（`caption_mode:'sidecar'`）：
+
+```powershell
+python scripts/export_captions.py <片子>          # → captions.zh-TW.srt / .vtt / captions.json
+```
+
+字幕按 `script.json` 里每条 line 的 `caption_segments`（完整短语、0-based、end exclusive）从真实逐字时刻导出。没有 `caption_segments` 时只做保守草稿并标 `review_required`；漏字、重叠、越界、文字对不上都会**直接报错且不写文件**。
+
+验证字幕开关：
+
+```powershell
+# out/ 里有 final_clean_720.mp4 + captions.zh-TW.vtt + review-player.html
+cd <片子>/out; python -m http.server 8080
+# 打开 http://127.0.0.1:8080/review-player.html —— 播放 → 点「字幕：關」→ 字幕消失、画面里也没有硬字幕
+```
+
+平台 CC（YouTube 等）要单独上传 SRT/VTT；不承诺 MP4 内嵌字幕轨会被平台自动读取。
+
 ## 示例片
 
-**当前两版（港台本地风格，v0.2）**
+**当前版本（v0.3，本地风格 + 字幕分离 + 自检闭环）**
 
 | 示例 | 时长 | 内容 | 看点 |
 |---|---|---|---|
-| [`examples/taiwan-native`](examples/taiwan-native) | 27.6 秒 | 台北市長辯論：金句怎麼搶聲量 | 红黄撞色大头封面、粗描边巨字、slam/震动/爆裂、80px 900 字重繁中字幕、**无角标** |
-| [`examples/hongkong-native`](examples/hongkong-native) | 42.3 秒 | 2024 垃圾徵費押後，邊個交代 | **书面粤语正文 + zh-HK 音色**、官员抠像封面、原片裁掉立法会 logo、无角标 |
+| `films/tw-debate-green-validation-v2`（实际产出，不在仓库） | 104 秒 | 2026 台北市長辯論：制度 vs 應變 | 真实辩论动态 + 原声（ASR 核对过）+ 原文摘录卡 + 三张图解 + 字幕独立 + 无角标 |
+| [`examples/taiwan-native`](examples/taiwan-native) | 27.6 秒 | 台北市長辯論：金句怎麼搶聲量 | 红黄撞色大头封面、粗描边巨字、slam/震动/爆裂 |
+| [`examples/hongkong-native`](examples/hongkong-native) | 42.3 秒 | 2024 垃圾徵費押後，邊個交代 | **书面粤语正文 + zh-HK 音色**、官员抠像封面 |
 
-两版都带 `cover.html`（封面入口页）、`cover.js`（封面版式）、`cover_1280.jpg`（成品）、`script.json`、`film.js`、`editorial.json`、`film.css`，以及裁好的素材图。**原视频不随仓库分发**（第三方版权），`editorial.json` 里记了来源 URL。
+两版都带 `cover.html`（封面入口页）、`cover.js`（封面版式）、`cover_1280.jpg`（成品）、`script.json`、`film.js`、`editorial.json`、`film.css`。**原视频不随仓库分发**（第三方版权），`editorial.json` 里记了来源 URL。
 
 **完整复现**（示例里没有 `lib/` 和 `fonts/`——那是本机路径，不进仓库）：
 
@@ -164,11 +191,12 @@ Copy-Item "$src/assets/img/*" "D:/tmp/hk-demo/assets/img/" -Force
 # 3. 重出时间线（示例的 script.json 有台词但新目录还没有配音）
 python scripts/temp_voice.py D:/tmp/hk-demo/script.json
 
-# 4. 检查 + 封面 + 联系表
+# 4. 预检 + 封面 + 字幕 + 联系表
+node scripts/preflight.mjs --dir D:/tmp/hk-demo --stage draft
 python scripts/check_editorial.py D:/tmp/hk-demo/editorial.json
 node scripts/render.mjs --dir D:/tmp/hk-demo --page cover.html --cover
-node scripts/render.mjs --dir D:/tmp/hk-demo --check-policy politics --check
 node scripts/render.mjs --dir D:/tmp/hk-demo --check-policy politics --sheet
+python scripts/export_captions.py D:/tmp/hk-demo
 ```
 
 **历史示例（v0.1，财经风格）**

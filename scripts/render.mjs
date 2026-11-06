@@ -11,7 +11,7 @@
 // 页面要求：seek 是确定的（同一个 t 永远画出同一帧，不依赖播放时间、不用 CSS 动画），并且 await 图片解码与字体。
 // ffmpeg：PATH 里的 ffmpeg，或环境变量 FFMPEG，或 scripts/local.json 的 ffmpeg。没装 Playwright 自带的 Chromium 时自动改用本机 Edge。
 import fs from 'node:fs/promises'; import path from 'node:path'; import http from 'node:http';
-import {spawn} from 'node:child_process'; import {once} from 'node:events';
+import {spawn, spawnSync} from 'node:child_process'; import {once} from 'node:events';
 import {createRequire} from 'node:module'; import fsSync from 'node:fs'; import {fileURLToPath} from 'node:url';
 import {stub} from './timeline_stub.mjs';
 
@@ -164,8 +164,7 @@ if (has('--check')) {
     ? '虚构标记：未开启（factual 模式正常；fiction 模式要 K.politics.fiction(true, …)）'
     : r.fiction.suppressed
       ? `虚构标记：已关闭（display:'no-badges'，私人研究预览；出处与真实性类型在 editorial.json 里）`
-      : `虚构标记：全片常驻「${r.fiction.text}」${r.fiction.missing?.length ? `，但有 ${r.fiction.missing.length} 处缺` : '，每一镜都验过'}`);
-  console.log('镜  时间            时长   场景        接法       says');
+      : `虚构标记：全片常驻「${r.fiction.text}」${r.fiction.missing?.length ? `，但有 ${r.fiction.missing.length} 处缺` : '，每一镜都验过'}`);  console.log('镜  时间            时长   场景        接法       says');
   for (const s of r.shots) console.log(`${String(s.i + 1).padStart(2)}  ${s.t0.toFixed(1).padStart(5)}–${s.t1.toFixed(1).padEnd(6)} ${(s.t1 - s.t0).toFixed(1).padStart(4)}s  ${s.scene.padEnd(10)} ${s.enter.padEnd(10)} ${s.says || '（没写）'}`);
   console.log(r.warns.length ? `\n要看一眼（${r.warns.length} 条）：\n- ` + r.warns.join('\n- ') : '\n没有要提醒的。');
   console.log('过了不等于好看：再跑 --sheet 看图。');
@@ -240,6 +239,36 @@ if (worker) {
   enc.stdin.end(); await once(enc, 'exit'); await b.close(); if (errs.length) { console.error([...new Set(errs)].slice(0, 5)); process.exit(2); } process.exit(0);
 }
 if (!has('--video')) { console.log('用 --stills 或 --video'); server.close(); process.exit(1); }
+// ---------- 整片渲染前的闸门 ----------
+// 逐帧渲染很贵（几分钟起），结构错误应该在刚开始时挡住，而不是渲完才发现。
+// **fail-closed**：预检没跑成（进程失败、输出不是 JSON）也算失败——没查成不等于查过。
+// 只在 --check-policy politics 下启用：上游手写片没有 KIT_REPORT，不该被新门禁误挡。
+if (!has('--force') && !arg('--range') && POLICY === 'politics') {
+  const pfArgs = [path.join(path.dirname(fileURLToPath(import.meta.url)), 'preflight.mjs'),
+    '--dir', here, '--stage', 'draft', '--json', '--check-policy', POLICY, '--out', out];
+  if (PAGE !== 'index.html') pfArgs.push('--page', PAGE);
+  const pf = spawnSync(process.execPath, pfArgs, {encoding: 'utf8'});
+  let rep = null, why = '';
+  if (pf.error) why = `preflight 没能启动：${pf.error.message}`;
+  else if (pf.status == null) why = 'preflight 被信号中断';
+  else {
+    try { rep = JSON.parse(pf.stdout || ''); }
+    catch { why = `preflight 的输出不是 JSON（exit ${pf.status}）：${(pf.stdout || pf.stderr || '').slice(0, 300)}`; }
+  }
+  if (why) {
+    server.close();
+    console.error(`预检没跑成，先修再渲（这不算通过）：\n  ${why}`);
+    console.error('确认要渲就加 --force。');
+    process.exit(1);
+  }
+  if ((rep.blocking_errors ?? []).length) {
+    server.close();
+    console.error(`预检没过（${rep.blocking_errors.length} 处），先修再渲：`);
+    for (const e of rep.blocking_errors.slice(0, 8)) console.error(`  [${e.code}] ${e.msg}`);
+    console.error('确认要渲就加 --force。');
+    process.exit(1);
+  }
+}
 const RG = arg('--range'), F0 = RG ? Math.round(Number(RG.split(':')[0]) * fps) : 0, F1 = RG ? Math.min(N, Math.round(Number(RG.split(':')[1]) * fps)) : N;
 const K = Number(arg('--workers') ?? 6), size = Math.ceil((F1 - F0) / K), starts = []; const t0 = Date.now();
 await Promise.all(Array.from({length: K}, (_, i) => { const a = F0 + i * size, z = Math.min(F1, a + size); if (a >= z) return null; starts.push(a);
@@ -267,3 +296,4 @@ await new Promise(res => {
     res();
   });
 });
+

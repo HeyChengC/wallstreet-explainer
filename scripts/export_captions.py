@@ -143,30 +143,41 @@ def check_segments(segs, text, bid, errors, warns):
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     as_json = '--json' in sys.argv
+
+    def fail(msg, code=1):
+        """统一失败出口：--json 时也要输出合法 JSON，机器才能 json.loads。"""
+        if as_json:
+            print(json.dumps({'ok': False, 'written': False, 'errors': [msg], 'warnings': [],
+                              'review_required': [], 'exit': code}, ensure_ascii=False, indent=1))
+        else:
+            print(msg)
+        return code
+
     if not args:
-        print(__doc__)
-        return 1
+        return fail('用法：python scripts/export_captions.py <片子目录> [--lang zh-TW|zh-HK] [--json]')
     D = Path(args[0]).resolve()
     SP, TP = D / 'script.json', D / 'timeline.json'
     for p in (SP, TP):
         if not p.exists():
-            print(f'缺 {p.name}：{D}')
-            return 1
+            return fail(f'缺 {p.name}：{D}')
 
     def load(p):
         try:
             v = json.loads(p.read_text('utf-8'))
         except json.JSONDecodeError as e:
-            raise SystemExit(f'{p.name} 不是合法 JSON：第 {e.lineno} 行第 {e.colno} 列 {e.msg}')
+            raise ValueError(f'{p.name} 不是合法 JSON：第 {e.lineno} 行第 {e.colno} 列 {e.msg}')
         if not isinstance(v, dict):
-            raise SystemExit(f'{p.name} 顶层必须是对象，现在是 {type(v).__name__}')
+            raise ValueError(f'{p.name} 顶层必须是对象，现在是 {type(v).__name__}')
         return v
 
-    S, T = load(SP), load(TP)
+    try:
+        S, T = load(SP), load(TP)
+    except ValueError as e:
+        return fail(str(e))
     if not isinstance(S.get('lines'), list):
-        raise SystemExit('script.json 的 lines 必须是数组')
+        return fail('script.json 的 lines 必须是数组')
     if not isinstance(T.get('beats'), list):
-        raise SystemExit('timeline.json 的 beats 必须是数组')
+        return fail('timeline.json 的 beats 必须是数组')
 
     lang = None
     for i, a in enumerate(sys.argv):

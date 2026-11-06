@@ -121,10 +121,13 @@ python scripts/temp_voice.py <片子>/script.json      # edge-tts 临时配音 +
 
 ```powershell
 python scripts/check_editorial.py <片子>/editorial.json
+node scripts/preflight.mjs --dir <片子> --stage draft
 node scripts/render.mjs --dir <片子> --check-policy politics --check
 node scripts/render.mjs --dir <片子> --check-policy politics --sheet
 node scripts/render.mjs --dir <片子> --check-policy politics --video --h 720
 ```
+
+`render --video`（politics 策略下）会先跑一遍预检，有 blocking 就停下、不渲。确认要渲加 `--force`。
 
 `--check` 会打印：
 
@@ -141,6 +144,26 @@ node scripts/render.mjs --dir <片子> --check-policy politics --video --h 720
 - `event-timeline` 的节点是否各挂各的 cue（不是同时亮）
 - 原话念得完吗（字数 / 时长）
 
+## 站 6.5：字幕
+
+默认 `caption_mode:'sidecar'`，影片不烧录字幕：
+
+```powershell
+python scripts/export_captions.py <片子>        # → captions.zh-TW.srt / .vtt / captions.json
+```
+
+在 `script.json` 的每条 line 上写 `caption_segments`（完整短语，0-based、end exclusive），导出脚本按真实逐字时刻算 start/end。**没有 `caption_segments` 时只出草稿**，并标 `review_required`——草稿是按标点猜的，不能当终稿。
+
+结构错误（漏句头、漏句尾、段间漏字、重叠、文字和原文不符、超过两行、时间倒序）会**直接报错且不写文件**。
+
+验证开关：
+
+```powershell
+Copy-Item starter/review-player.html <片子>/out/
+cd <片子>/out; python -m http.server 8080
+# 打开 http://127.0.0.1:8080/review-player.html，播放 → 点「字幕：關」→ 字幕消失、画面里也没字
+```
+
 ## 站 7：成片
 
 ```powershell
@@ -148,9 +171,14 @@ python scripts/mix.py <片子> --check
 node scripts/render.mjs --dir <片子> --check-policy politics --video --h 1080
 ffmpeg -i <片子>\out\visual_1080.mp4 -i <片子>\mix_master.wav `
   -c:v copy -c:a aac -b:a 192k -shortest -movflags +faststart `
-  <片子>\out\final_1080.mp4
-ffprobe -v error -show_entries stream=codec_type,duration -of json <片子>\out\final_1080.mp4
+  <片子>\out\final_clean_1080.mp4
+ffprobe -v error -show_entries stream=codec_type,duration -of json <片子>\out\final_clean_1080.mp4
+node scripts/preflight.mjs --dir <片子> --stage delivery     # 最后一道
 ```
+
+**命名**：默认 `final_clean_720.mp4`（无烧录字幕，配独立 SRT/VTT）；要硬字幕才出 `final_burned_720.mp4`。
+
+**预检 delivery 会查**：音视频流都在、时长差 ≤0.25s、封面正好 1280×720 / 1920×1080、平均音量不异常、每句都有字幕计划。
 
 **验证**：`ffprobe` 要看得到一条 video 和一条 audio，时长和 `timeline.json` 的 `duration` 对得上。
 

@@ -124,12 +124,14 @@ if (S_.ok && T_.ok) {
 }
 
 // ---------- 地区 ↔ 语音 ----------
+// 用**解析后**的音色判断：script 里只写 region、不写 voice 是合法的（会落到地区默认）。
 if (S_.ok && script.region) {
   const want = {taiwan: /^zh-TW-/, hongkong: /^zh-HK-/}[script.region];
-  if (want && !want.test(script.voice ?? '')) {
-    block('locale_voice_mismatch', `region=${script.region} 却用 ${script.voice}：香港必须 zh-HK-*，台湾必须 zh-TW-*，不能静默用普通话`);
+  const resolved = resolveVoice(script);
+  if (want && !want.test(resolved)) {
+    block('locale_voice_mismatch', `region=${script.region} 却用 ${resolved}：香港必须 zh-HK-*，台湾必须 zh-TW-*，不能静默用普通话`);
   }
-  R.evidence.locale = {region: script.region, voice: script.voice, rate: script.rate};
+  R.evidence.locale = {region: script.region, voice: resolved, rate: resolveRate(script), explicit: !!script.voice};
 }
 
 // ---------- 繁体残留：只查港台，且只查"不歧义"的简体字 ----------
@@ -376,12 +378,24 @@ function probe(file) {
         for (const c of (s.cues ?? [])) {
           if (c.err) { block('bad_cue', `第 ${s.i + 1} 镜的 ${c.key} 写了 ${c.raw}，解析失败：${c.err}`); continue; }
           if (c.t == null) continue;
-          const isUntil = c.key === 'until';
-          const lo = s.t0 - 0.02, hi = s.t1 + 0.02;
-          if (c.t < lo || c.t > hi) {
-            block('cue_outside_shot',
-              `第 ${s.i + 1} 镜（${s.scene}，${s.t0}–${s.t1}s）的 ${c.key}=${c.raw} 解析到 ${c.t}s，不在这一镜里`
-              + (isUntil ? '（until 必须等于或晚于本镜起点、不晚于镜尾）' : ''));
+          const isUntil = c.key === 'until' || c.key.endsWith('.until');
+          // 镜头边界用 KIT_REPORT 的两位小数，容差按 1 帧（30fps ≈ 0.033s）
+          const eps = 0.034;
+          if (isUntil) {
+            // until 是**边界**：等于镜尾合法，但要晚于本镜起点
+            if (c.t < s.t0 - eps) {
+              block('cue_outside_shot', `第 ${s.i + 1} 镜（${s.scene}，${s.t0}–${s.t1}s）的 until=${c.raw} 解析到 ${c.t}s，早于本镜起点`);
+            } else if (c.t > s.t1 + eps) {
+              warn('until_beyond_shot', `第 ${s.i + 1} 镜的 until=${c.raw} 解析到 ${c.t}s，晚于本镜镜尾 ${s.t1}s（下一镜会把它截断）`);
+            }
+          } else {
+            // 其它 cue（drawAt / shakeAt / at / zoom / hlAt…）：必须**严格**在镜内，
+            // 等于镜尾就是"这一镜结束时才出现"，观众永远看不到 → 阻断。
+            if (c.t < s.t0 - eps) {
+              block('cue_outside_shot', `第 ${s.i + 1} 镜（${s.scene}，${s.t0}–${s.t1}s）的 ${c.key}=${c.raw} 解析到 ${c.t}s，早于本镜起点`);
+            } else if (c.t >= s.t1 - eps) {
+              block('cue_outside_shot', `第 ${s.i + 1} 镜（${s.scene}，${s.t0}–${s.t1}s）的 ${c.key}=${c.raw} 解析到 ${c.t}s，落在镜尾或之后：这一镜结束前它不会出现，观众看不到`);
+            }
           }
         }
       }

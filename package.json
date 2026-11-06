@@ -1,6 +1,6 @@
 {
   "name": "political-commentary",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Claude Code skill: Hong Kong / Taiwan political commentary videos — renderer, fact ledger and news snapshot tools",
   "private": true,
   "type": "module",
@@ -13,3 +13,4 @@
   },
   "license": "MIT"
 }
+

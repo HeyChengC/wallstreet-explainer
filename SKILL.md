@@ -153,10 +153,50 @@ K.politics.fiction(true, '虛構演繹 · 人物與情節均為虛構');   // �
 | 3 导演表 | 每镜写 `says`、`claimIds`、承接 | 每镜怎么接、哪几镜放证据 |
 | 4 素材 | 官方页面截图 → PDF 原页 → 已核验原帖 → 用户提供 | 3–4 张关键样帧 |
 | 5 开头/小样 | 钩子先做 15–20 秒 | 开头小样 |
-| 6 720p | `check_editorial` → `--check-policy politics --check` → `--sheet` → 720p | 720p + 抽帧 |
+| 6 720p | `preflight --stage draft` → `--check` → `--sheet` → 720p | 720p + 抽帧 |
 | 7 成片 | 定稿后渲一次 1080p，`mix.py` 混音 | 1080p |
 
 命令和逐站产物：`references/politics-production.md`。素材怎么找、抓不到怎么办：`references/politics-sourcing.md`。
+
+## 交片前：两个检查，一个写、一个跑
+
+**这是默认流程，不是可选项。** 模型单独跑也能靠它把片子做完。
+
+### 1. 跑预检（程序查确定性错误）
+
+```powershell
+node scripts/preflight.mjs --dir <片子> --stage draft      # 写镜头表时
+node scripts/preflight.mjs --dir <片子> --stage delivery   # 交片前
+```
+
+它查：页面报错/404、镜头首尾空档与重叠、cue 是否落在**声明它的那一镜**里、人物是否真的可见（逐祖先 opacity）、重复 seek 是否稳定、文字是否越出安全区、角标是否漏、字体是否真加载、实拍帧数够不够、字幕计划有没有、成片的音视频流与时长、封面确切尺寸。
+
+退出码：**0 干净 / 1 有必须修的 / 2 只有需要你自己看的**。`out/preflight.json` 里分 `blocking_errors` / `warnings` / `review_required` / `evidence`。
+
+**程序查完不等于片子对。** 它只证明"没有 `.pol-*` 元素"，不证明"这句话没歪曲原话"。
+
+### 2. 自己审一遍（写 `out/review.json`）
+
+按 `references/self-review.md` 的复核卡：先文案（原话归属、数字范围、因果动机、对方反驳），再画面（字压脸、抠像残片、台标、空场、版式重复），最后承诺（封面答应的事片子做到了吗）。
+
+```json
+{
+  "input_hash": "<preflight 报的 hash>",
+  "covers": {
+    "visual_check": ["逐镜看过 sheet：第 1 镜……；全片无 .pol-* 元素"],
+    "semantic_check": ["c1 对逐字稿第 19 条：……"],
+    "caption_check": ["56 条按完整短语断句，人名未被切断"]
+  }
+}
+```
+
+**`covers` 每一项要有实际文字证据**——`true`、`{}`、空数组都不算。预检核对 `input_hash`：画面或素材改过就会说 `review_stale`，得重看。
+
+### 什么情况停下来
+
+同一类错误改三轮还在：停下，把证据、试过的修法、缺什么资源写出来，不要整片重渲。
+
+**不改用户选的立场/情绪，不为了过检查偷偷加角标，不谎称验过。**
 
 ## 常用命令
 
