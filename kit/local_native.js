@@ -384,4 +384,146 @@ const st2=document.createElement('style');st2.textContent=moreCss;document.head.
 
 // 导出给 film.js 直接用（封面、动效）
 Object.assign(K,{slam,shake,burst,sticker,heavyText});
+
+// =====================================================================================
+// 港台政论特化动效与场景（动态推进 + 质检印章 + 打脸对比）
+// =====================================================================================
+
+// 恒动相机推进函数：彻底消灭静止死帧
+function autoPushCam(t, c, o = {}) {
+  const dur = Math.max(0.1, c.t1 - c.t0);
+  const progress = C((t - c.t0) / dur);
+  const startS = o.from ?? 1.0;
+  const endS = o.to ?? 1.07;
+  const s = lerp(startS, endS, progress);
+  const cx = o.cx ?? 960;
+  const cy = o.cy ?? 540;
+  return { x: cx, y: cy, s };
+}
+
+// 政治讽刺/翻车必备红印章
+function stamp(t, t0, o = {}) {
+  const d = o.dur ?? 0.22;
+  const k = (t - t0) / d;
+  if (k <= 0) return "";
+  const progress = C(k);
+  const sc = progress < 1 ? lerp(2.4, 1.0, E(progress)) : 1.0;
+  const rot = (o.rot ?? -12) + (1 - progress) * 15;
+  const op = C((t - t0) / 0.08);
+  const text = o.text ?? "自打臉";
+  const color = o.color ?? "#e01f1f";
+  const x = o.x ?? 960;
+  const y = o.y ?? 520;
+
+  return `<div style="position:absolute;left:${f1(x)}px;top:${f1(y)}px;` +
+    `border:10px solid ${color};border-radius:18px;padding:12px 36px;` +
+    `font:900 ${o.size ?? 128}px ${FAM.han};color:${color};` +
+    `letter-spacing:12px;text-align:center;text-shadow:0 0 20px rgba(224,31,31,0.5);` +
+    `box-shadow:0 0 30px rgba(224,31,31,0.4), inset 0 0 20px rgba(224,31,31,0.3);` +
+    `transform:translate(-50%,-50%) rotate(${rot}deg) scale(${f3(sc)});opacity:${f3(op)};` +
+    `z-index:90;pointer-events:none;filter:drop-shadow(0 15px 30px rgba(0,0,0,0.8));">${text}</div>`;
+}
+
+// 场景：pol-hero（加入恒动镜头推进的大头说唱）
+K.scene("pol-hero", {
+  says: "焦点人物大头破框而出，大字压身，镜头步步逼近观众",
+  need: ["headline"],
+  make(p, c) {
+    const tSlam = c.at(p.drawAt) ?? (c.t0 + 0.02);
+    const tShake = p.shakeAt ? c.at(p.shakeAt) : null;
+    const px = p.personX ?? 1280;
+    const py = p.personY ?? 100;
+    const ph = p.personH ?? 980;
+
+    return t => {
+      let baseCam = autoPushCam(t, c, { from: 1.0, to: 1.08, cx: 960, cy: 540 });
+      if (tShake != null) {
+        const sh = shake(t, tShake, { amp: p.shakeAmp ?? 18 });
+        baseCam.x += sh[0];
+        baseCam.y += sh[1];
+      }
+      const cp = { ...baseCam };
+
+      let h = "";
+      h += `<div class="k-full" style="background:radial-gradient(ellipse at 50% 50%,${p.bgC1 ?? "#9e1414"},${p.bgC2 ?? "#1c0404"} 85%)"></div>`;
+
+      if (p.img) {
+        h += `<img src="${p.img}" style="position:absolute;left:${f1(px - ph * 0.4)}px;top:${f1(py)}px;height:${f1(ph)}px;` +
+          `filter:drop-shadow(0 20px 40px rgba(0,0,0,0.85));">`;
+      }
+
+      const s1 = slam(t, tSlam, { dur: 0.28, from: 0.72, over: 1.15 });
+      h += `<div style="position:absolute;left:${f1(p.headlineX ?? 500)}px;top:${f1(p.headlineY ?? 500)}px;` +
+        `transform:translate(-50%,-50%) rotate(${p.headlineRot ?? -3}deg) scale(${f3(s1.sc)});opacity:${f3(s1.o)};">` +
+        heavyText(String(p.headline), { size: p.headlineSize ?? 156, fill: p.fill ?? "#ffd60a", stroke: 10, shadow: 12 }) + `</div>`;
+
+      if (p.sub) {
+        h += `<div style="position:absolute;left:${f1(p.headlineX ?? 500)}px;top:${f1((p.headlineY ?? 500) - 130)}px;` +
+          `transform:translate(-50%,-50%) rotate(${p.subRot ?? 1}deg);">` +
+          heavyText(String(p.sub), { size: p.subSize ?? 86, fill: "#ffffff", stroke: 8, shadow: 8 }) + `</div>`;
+      }
+
+      return L(baseCam, cp, 1, h);
+    };
+  }
+});
+
+// 场景：pol-slap（翻车打脸 / 昨非今是对比镜）
+K.scene("pol-slap", {
+  says: "左右并列：左边是当年承诺，右边是今日打脸事实；中间重重砸下印章",
+  need: ["past", "now"],
+  make(p, c) {
+    const tStamp = c.at(p.stampAt) ?? (c.t0 + 0.8);
+    return t => {
+      const cam = autoPushCam(t, c, { from: 1.0, to: 1.05, cx: 980, cy: 540 });
+      const cp = { ...cam };
+
+      let h = `<div class="k-full" style="background:#12151c;display:flex;">`;
+
+      h += `<div style="position:absolute;left:80px;top:180px;width:800px;background:#1e2330;border-left:8px solid #388bfd;padding:40px;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">` +
+        `<div style="font:700 42px ${FAM.han};color:#8b949e;margin-bottom:20px;">${p.pastTitle ?? "當年承諾 / 說法"}</div>` +
+        `<div style="font:900 68px ${FAM.han};color:#f0f6fc;line-height:1.25;">${p.past}</div></div>`;
+
+      h += `<div style="position:absolute;right:80px;top:180px;width:800px;background:#2d1515;border-left:8px solid #f85149;padding:40px;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">` +
+        `<div style="font:700 42px ${FAM.han};color:#ffa198;margin-bottom:20px;">${p.nowTitle ?? "如今現實 / 翻車"}</div>` +
+        `<div style="font:900 68px ${FAM.han};color:#ffd60a;line-height:1.25;">${p.now}</div></div>`;
+
+      h += stamp(t, tStamp, { text: p.stampText ?? "自打臉", x: 960, y: 540, size: 140 });
+
+      h += `</div>`;
+      return L(cam, cp, 1, h);
+    };
+  }
+});
+
+// 场景：pol-evidence（公文、账目、原报道抓包推镜）
+K.scene("pol-evidence", {
+  says: "拿出公文/审计报告/新闻原文，镜头大比例推进，黄色荧光笔动态划线标出猫腻",
+  need: ["img"],
+  make(p, c) {
+    const tHl = c.at(p.hlAt) ?? (c.t0 + 0.3);
+    return t => {
+      const cam = autoPushCam(t, c, { from: 1.02, to: 1.15, cx: p.focusX ?? 960, cy: p.focusY ?? 540 });
+      const cp = { ...cam };
+
+      let h = `<div class="k-full" style="background:#0a0c10;">`;
+      h += `<img src="${p.img}" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:${p.imgW ?? 1600}px;box-shadow:0 30px 60px rgba(0,0,0,0.9);border-radius:8px;">`;
+
+      const hlProg = C((t - tHl) / 0.4);
+      if (hlProg > 0 && p.hlBox) {
+        const [bx, by, bw, bh] = p.hlBox;
+        h += `<div style="position:absolute;left:${bx}px;top:${by}px;width:${f1(bw * hlProg)}px;height:${bh}px;background:rgba(255,230,0,0.45);border-bottom:4px solid #ffd60a;mix-blend-mode:multiply;"></div>`;
+      }
+
+      if (p.badge) {
+        h += `<div style="position:absolute;right:100px;bottom:140px;transform:rotate(-4deg);">` +
+          heavyText(p.badge, { size: 110, fill: "#ff3b30", stroke: 8 }) + `</div>`;
+      }
+
+      h += `</div>`;
+      return L(cam, cp, 1, h);
+    };
+  }
+});
+
 })();
