@@ -172,3 +172,70 @@
 .vp-chno{position:absolute;font:400 300px/1 Num,'Bebas Neue',sans-serif;color:transparent;-webkit-text-stroke:5px var(--vp-accent);letter-spacing:6px}
 .vp-chl{position:absolute;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--vp-accent),var(--vp-hi))}
 .vp-askq{position:absolute;font:400 1000px/1 Shu,sans-serif;color:var(--vp-accent);transform-origin:40% 55%;text-shadow:0 14px 0 var(--vp-lo),0 30px 60px rgba(4,5,24,.5)}
+
+/* ===== 立体感和质感（v2.7）：卡有两层厚度、顶边高光、斜向反光；柱子是长方体；圆牌、圆点是鼓的；圆环有厚度 ===== */
+.vp-qc,.vp-stamp,.vp-note,.vp-say,.vp-bar,.vp-read,.vp-vs,.vp-link,.vp-row,.vp-chart,.vp-plate,.vp-tli,.vp-rk{
+ background:linear-gradient(118deg,rgba(255,255,255,.17) 0%,rgba(255,255,255,.03) 34%,rgba(255,255,255,0) 60%),linear-gradient(165deg,color-mix(in srgb,var(--vp-card1) 98%,transparent),color-mix(in srgb,var(--vp-card2) 98%,transparent));
+ box-shadow:inset 0 2.5px 0 rgba(255,255,255,.34),inset 0 -4px 0 rgba(0,0,10,.4),inset 0 0 0 1px rgba(255,255,255,.07),0 0 0 2.5px var(--vp-line),0 8px 0 2px color-mix(in srgb,var(--vp-lo) 72%,#000),0 15px 0 2px color-mix(in srgb,var(--vp-lo) 38%,#000),0 46px 70px rgba(4,5,24,.62)}
+.vp-vs.on,.vp-link.hl,.vp-row.hl,.vp-tli.hl,.vp-rk.hl{
+ background:linear-gradient(118deg,rgba(255,255,255,.26) 0%,rgba(255,255,255,.04) 36%,rgba(255,255,255,0) 60%),linear-gradient(165deg,color-mix(in srgb,var(--vp-accent) 46%,var(--vp-card1)),color-mix(in srgb,var(--vp-accent) 16%,var(--vp-card2)));
+ box-shadow:inset 0 2.5px 0 rgba(255,255,255,.5),inset 0 -4px 0 rgba(0,0,10,.4),0 0 0 3.5px var(--vp-hi),0 8px 0 3px var(--vp-lo),0 15px 0 3px color-mix(in srgb,var(--vp-lo) 55%,#000),0 50px 76px rgba(4,5,24,.66)}
+.vp-win,.vp-pp,.vp-nc{box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 6px 0 #c9cdd3,0 12px 0 #a4a9b3,0 17px 0 #7e8490,0 50px 90px rgba(0,0,0,.62)}
+/* 柱子：长方体（正面 + 顶面 + 右侧面） */
+.vp-col{border-radius:0;background:linear-gradient(180deg,#c9cee0,#7c839c 60%,#565c74);box-shadow:inset 0 3px 0 rgba(255,255,255,.4),0 30px 40px rgba(4,5,24,.5)}
+.vp-col i{position:absolute;left:0;top:-34px;width:100%;height:34px;display:block;background:#e9ecf6;transform-origin:0 100%;transform:skewX(-45deg)}
+.vp-col b{position:absolute;left:100%;top:0;width:34px;height:100%;display:block;background:linear-gradient(180deg,#6d7389,#3b4055);transform-origin:0 0;transform:skewY(-45deg)}
+.vp-col.hl{background:linear-gradient(180deg,var(--vp-hi),var(--vp-accent) 62%,color-mix(in srgb,var(--vp-accent) 60%,var(--vp-lo)));box-shadow:inset 0 3px 0 rgba(255,255,255,.65),0 30px 40px rgba(4,5,24,.5)}
+.vp-col.hl i{background:#fff}
+.vp-col.hl b{background:linear-gradient(180deg,color-mix(in srgb,var(--vp-accent) 70%,var(--vp-lo)),var(--vp-lo))}
+.vp-colv{font-size:92px;text-shadow:0 5px 0 rgba(10,12,40,.9),0 14px 24px rgba(0,0,0,.6)}
+.vp-base{height:10px;border-radius:5px;background:linear-gradient(180deg,var(--vp-hi),var(--vp-line));box-shadow:0 6px 0 color-mix(in srgb,var(--vp-lo) 70%,#000),0 20px 30px rgba(4,5,24,.5)}
+/* 鼓的圆牌、圆点、VS */
+.vp-row .bd,.vp-vsb{background:radial-gradient(circle at 32% 26%,var(--vp-hi),var(--vp-accent) 58%,var(--vp-lo));box-shadow:inset 0 3px 0 rgba(255,255,255,.55),inset 0 -5px 0 rgba(0,0,20,.3),0 7px 0 var(--vp-lo),0 16px 22px rgba(4,5,24,.5)}
+.vp-row .bd.ok{background:radial-gradient(circle at 32% 26%,#c9fff1,var(--vp-up1) 50%,var(--vp-up2));box-shadow:inset 0 3px 0 rgba(255,255,255,.6),inset 0 -5px 0 rgba(0,20,20,.3),0 7px 0 #17635b,0 16px 22px rgba(4,5,24,.5)}
+.vp-row .bd.no{background:radial-gradient(circle at 32% 26%,#b9bfd0,#6b7184 55%,#3c4152);box-shadow:inset 0 3px 0 rgba(255,255,255,.4),inset 0 -5px 0 rgba(0,0,20,.3),0 7px 0 #2a2e3c,0 16px 22px rgba(4,5,24,.5)}
+.vp-vsb{box-shadow:inset 0 3px 0 rgba(255,255,255,.55),inset 0 -5px 0 rgba(0,0,20,.3),0 0 0 6px var(--vp-card2),0 0 0 9px var(--vp-line),0 9px 0 9px color-mix(in srgb,var(--vp-lo) 70%,#000),0 26px 34px rgba(4,5,24,.6)}
+.vp-dot{background:radial-gradient(circle at 34% 28%,#fff,#cfd3e6 55%,#7d84a0);box-shadow:inset 0 0 0 7px var(--vp-card2),0 0 0 3px var(--vp-line),0 6px 0 3px color-mix(in srgb,var(--vp-lo) 70%,#000),0 14px 18px rgba(4,5,24,.5)}
+.vp-dot.hl{background:radial-gradient(circle at 34% 28%,#fff,var(--vp-hi) 40%,var(--vp-accent));box-shadow:0 0 0 5px #fff,0 6px 0 5px var(--vp-lo),0 0 30px color-mix(in srgb,var(--vp-accent) 70%,transparent),0 14px 18px rgba(4,5,24,.5)}
+.vp-tl{box-shadow:0 5px 0 color-mix(in srgb,var(--vp-lo) 70%,#000)}
+/* 排行的条、因果链的箭头、走势线 */
+.vp-rk i{box-shadow:inset 0 3px 0 rgba(255,255,255,.4),inset 0 -4px 0 rgba(0,0,20,.3),0 5px 0 rgba(0,0,20,.45)}
+.vp-arrow,.vp-arrow i{filter:drop-shadow(0 4px 0 rgba(0,0,20,.5))}
+.vp-chart svg polyline{filter:drop-shadow(0 7px 0 rgba(0,0,20,.45)) drop-shadow(0 0 14px currentColor)}
+.vp-chart .mk{box-shadow:inset 0 -3px 0 rgba(0,0,20,.14),0 5px 0 #b9bec7,0 14px 22px rgba(4,5,24,.5)}
+.vp-ring .th{stroke:var(--vp-lo)}
+.vp-ring{filter:drop-shadow(0 30px 40px rgba(4,5,24,.55))}
+.vp-chno{color:inherit;-webkit-text-stroke:0;font:italic 400 300px/1 Num,'Bebas Neue',sans-serif;letter-spacing:6px}
+.vp-tag{box-shadow:inset 0 2.5px 0 rgba(255,255,255,.45),0 5px 0 var(--vp-lo),0 9px 0 color-mix(in srgb,var(--vp-lo) 55%,#000),0 20px 34px rgba(4,5,24,.5)}
+
+/* ===== 一个主色 + 三个伴色（v2.7）：每样东西用自己的 --k（本色）、--kh（亮面）、--kl（暗面） ===== */
+.vp-col,.vp-col.hl{background:linear-gradient(180deg,var(--kh),var(--k) 58%,color-mix(in srgb,var(--k) 62%,var(--kl)))}
+.vp-col i,.vp-col.hl i{background:color-mix(in srgb,var(--kh) 70%,#fff)}
+.vp-col b,.vp-col.hl b{background:linear-gradient(180deg,color-mix(in srgb,var(--k) 55%,var(--kl)),var(--kl))}
+.vp-col:not(.hl){filter:saturate(.7) brightness(.82)}
+.vp-colv,.vp-colv.hl{color:var(--kh)}
+.vp-vs{background:linear-gradient(118deg,rgba(255,255,255,.2) 0%,rgba(255,255,255,.03) 36%,rgba(255,255,255,0) 60%),linear-gradient(165deg,color-mix(in srgb,var(--k) 42%,var(--vp-card1)),color-mix(in srgb,var(--k) 12%,var(--vp-card2)))}
+.vp-vs em{color:var(--kh)}
+.vp-vs.on{background:linear-gradient(118deg,rgba(255,255,255,.3) 0%,rgba(255,255,255,.05) 36%,rgba(255,255,255,0) 60%),linear-gradient(165deg,color-mix(in srgb,var(--k) 70%,var(--vp-card1)),color-mix(in srgb,var(--k) 30%,var(--vp-card2)));box-shadow:inset 0 2.5px 0 rgba(255,255,255,.5),inset 0 -4px 0 rgba(0,0,10,.4),0 0 0 3.5px var(--kh),0 8px 0 3px var(--kl),0 15px 0 3px color-mix(in srgb,var(--kl) 55%,#000),0 50px 76px rgba(4,5,24,.66)}
+.vp-link .ph,.vp-link .no{background:linear-gradient(160deg,var(--kh),var(--k) 55%,var(--kl));color:#fff;box-shadow:inset 0 3px 0 rgba(255,255,255,.5),0 6px 0 var(--kl),0 12px 18px rgba(4,5,24,.45);text-shadow:0 3px 6px rgba(0,0,0,.35)}
+.vp-link em{color:var(--kh)}
+.vp-link.hl,.vp-row.hl,.vp-tli.hl,.vp-rk.hl{background:linear-gradient(118deg,rgba(255,255,255,.26) 0%,rgba(255,255,255,.04) 36%,rgba(255,255,255,0) 60%),linear-gradient(165deg,color-mix(in srgb,var(--k) 46%,var(--vp-card1)),color-mix(in srgb,var(--k) 16%,var(--vp-card2)));box-shadow:inset 0 2.5px 0 rgba(255,255,255,.5),inset 0 -4px 0 rgba(0,0,10,.4),0 0 0 3.5px var(--kh),0 8px 0 3px var(--kl),0 15px 0 3px color-mix(in srgb,var(--kl) 55%,#000),0 50px 76px rgba(4,5,24,.66)}
+.vp-row .bd{background:radial-gradient(circle at 32% 26%,var(--kh),var(--k) 58%,var(--kl));box-shadow:inset 0 3px 0 rgba(255,255,255,.55),inset 0 -5px 0 rgba(0,0,20,.3),0 7px 0 var(--kl),0 16px 22px rgba(4,5,24,.5)}
+.vp-chart,.vp-chart.down{color:var(--k)}
+.vp-dot.hl{background:radial-gradient(circle at 34% 28%,#fff,var(--kh) 40%,var(--k));box-shadow:0 0 0 5px #fff,0 6px 0 5px var(--kl),0 0 30px color-mix(in srgb,var(--k) 70%,transparent),0 14px 18px rgba(4,5,24,.5)}
+.vp-dot:not(.hl){background:radial-gradient(circle at 34% 28%,var(--kh),var(--k) 60%,var(--kl))}
+.vp-tli u{color:var(--kh)}
+.vp-ring{color:var(--k)}
+.vp-ring .th{stroke:var(--kl)}
+.vp-rk i,.vp-rk.hl i{background:linear-gradient(90deg,var(--kl),var(--k) 60%,var(--kh))}
+.vp-rk:not(.hl) i{filter:saturate(.7) brightness(.85)}
+.vp-rk span,.vp-rk.hl span{color:var(--kh)}
+.vp-qm{color:var(--k);text-shadow:0 10px 0 var(--kl),0 24px 50px rgba(4,5,24,.5)}
+.vp-chl{background:linear-gradient(90deg,var(--k),var(--kh))}
+
+/* 图形镜头的底：灰蓝，亮一档 */
+.vp-tint.g{background:linear-gradient(165deg,color-mix(in srgb,color-mix(in srgb,var(--vp-accent) 30%,#6f7aa0) 58%,transparent),color-mix(in srgb,color-mix(in srgb,var(--vp-accent) 22%,#2a3252) 84%,transparent) 82%)}
+
+/* 克制：没被强调的那几样再灰一档，一屏只有一样是全色 */
+.vp-col:not(.hl),.vp-rk:not(.hl) i{filter:saturate(.55) brightness(.8)}
+.vp-link:not(.hl) .no,.vp-link:not(.hl) .ph,.vp-row:not(.hl) .bd:not(.ok):not(.no),.vp-dot:not(.hl){filter:saturate(.7)}

@@ -5,7 +5,9 @@
 //   5 每样东西只做一个有意思的动作，落定后一个像素不动（不弹、不晃、不飘、镜头不顿）
 // 二十个组件，有她没她都能用：前 8 个是讲故事的（有口播时她是底），后 12 个是算账、比较、引用、分段的图形镜头（有口播时她在角上的圆头像里）。
 // 有口播素材就垫她的实拍，没有（或写 host:false）就垫 bg 那张图。一条片里每个组件最多用一两次，进场别重复。
-// 用法：film.js 里 await KIT_VERT.use(K,{…}) 之后写一句 KIT_VPRO.theme({accent:'#8a86ee'})，颜色取自口播画面；然后镜头表里写 scene:'vp-words' 这些。
+// 用法：film.js 里 await KIT_VERT.use(K,{…}) 之后写一句 KIT_VPRO.theme({accent:'#8a86ee'})，主色取自口播画面；然后镜头表里写 scene:'vp-words' 这些。
+// 颜色：一个主色（卡的底、细边、大字）+ 三个伴色（青绿、杏橙、天蓝，按主色自动配、饱和度压低，theme({palette:[…]}) 可以自己定）。
+//       图形镜头里每样东西轮着用这四个颜色（每项写 c:0–3 可以指定），所以一屏不是一个颜色，但都在一个家族里。
 (()=>{
 const {S,W,ZH,A,plain,fitH,fitU,fitN,hostBox,avatar,roomSrc,HOST}=KIT_VERT;
 const {hashf}=KIT;
@@ -21,11 +23,18 @@ const wipe=k=>`clip-path:inset(-20% ${f1(100*(1-k))}% -20% -5%)`;
 const hex=c=>{const m=/^#([0-9a-f]{6})$/i.exec(c);if(!m)throw Error(`KIT_VPRO.theme：颜色要写成 '#8a86ee' 这样，收到 ${c}`);return [0,2,4].map(i=>parseInt(m[1].slice(i,i+2),16));};
 const mix=(a,b,k)=>'#'+hex(a).map((v,i)=>Math.round(lerp(v,hex(b)[i],k)).toString(16).padStart(2,'0')).join('');
 const TH={};let PUFF={};
+const hsv2hex=(h,sv,v)=>{h=((h%360)+360)%360;const f=n=>{const k=(n+h/60)%6;return Math.round(255*(v-v*sv*Math.max(0,Math.min(k,4-k,1))));};return '#'+[f(5),f(3),f(1)].map(x=>x.toString(16).padStart(2,'0')).join('');};
+const hueOf=c=>{const [r,g,b]=hex(c).map(x=>x/255),mx=Math.max(r,g,b),mn=Math.min(r,g,b),d=mx-mn;if(!d)return 0;return 60*(mx===r?((g-b)/d+6)%6:mx===g?(b-r)/d+2:(r-g)/d+4);};
+const tri=c=>({b:c,hi:mix(c,'#ffffff',.62),lo:mix(c,'#05061c',.56)});
+// 第 i 样东西用第几个颜色：0 主色，1–3 伴色，轮着用
+const KV=i=>{const k=TH.pal[((i%TH.pal.length)+TH.pal.length)%TH.pal.length];return `--k:${k.b};--kh:${k.hi};--kl:${k.lo};`;};
 function theme(o={}){
  const a=o.accent??'#8a86ee';
  Object.assign(TH,{accent:a,hi:o.hi??mix(a,'#ffffff',.7),lo:o.lo??mix(a,'#05061c',.58),card1:o.card1??mix(a,'#0b0d2c',.7),card2:o.card2??mix(a,'#05061c',.9),ink:o.ink??'#f4f2ff',
   num1:o.num1??mix(a,'#ffffff',.18),num2:o.num2??mix(a,'#05061c',.5),num3:o.num3??mix(a,'#05061c',.72),up1:o.up1??'#7fe0cc',up2:o.up2??'#2a8f84',cool:o.cool??'#a9c4ff',bg:o.bg??TH.bg??null});
+ {const h=hueOf(a);TH.pal=(o.palette??[a,hsv2hex(h-68,.38,.78),hsv2hex(h+140,.40,.92),hsv2hex(h-28,.30,.90)]).map(tri);}   // 伴色：青绿、杏橙、天蓝，参考片量到的那几个调子；饱和度压在四成以下，亮度和主色齐，放在一起不抢
  PUFF={white:['#ffffff',mix('#ffffff',a,.12),mix(a,'#05061c',.55)],accent:[TH.hi,a,TH.lo],cool:[mix(TH.cool,'#ffffff',.8),TH.cool,mix(TH.cool,'#05061c',.55)],gray:['#dfe2e7','#8a8f9a','#474b55']};
+ TH.pal.forEach((k,i)=>{PUFF['c'+i]=[k.hi,k.b,k.lo];});
  const [r,g,b]=hex(TH.hi);let st=document.getElementById('vp-theme');if(!st){st=document.createElement('style');st.id='vp-theme';document.head.appendChild(st);}
  st.textContent=`:root{--vp-accent:${a};--vp-hi:${TH.hi};--vp-lo:${TH.lo};--vp-card1:${TH.card1};--vp-card2:${TH.card2};--vp-ink:${TH.ink};--vp-line:rgba(${r},${g},${b},.78);--vp-num1:${TH.num1};--vp-num2:${TH.num2};--vp-num3:${TH.num3};--vp-up1:${TH.up1};--vp-up2:${TH.up2}}.v-root{--v-on:${mix(a,'#ffffff',.45)}}`;
  return TH;}
@@ -218,74 +227,77 @@ S('vp-number',{real:()=>true,minDur:2,
 // ====================================================================================================
 const hasAva=p=>HOST.on&&p.avatar!==false;
 const hd=(p,th)=>(p.brow?`<div class="v-brow" style="left:62px;top:150px;${wipe(oc(th/.3))}">${p.brow}</div>`:'')+(p.title?`<div class="v-h v-shadow" style="left:60px;top:208px;font-size:${fitH(p.title,88,hasAva(p)?720:960)}px;${wipe(oc((th-.1)/.35))}">${p.title}</div>`:'');
-const base=(p,c,t)=>bgHTML(p,c,t,{s:1.14,blur:14,bri:.3});
+const base=(p,c,t)=>bgHTML(p,c,t,{s:1.14,blur:14,bri:.44}).replace('class="vp-tint"','class="vp-tint g"');   // 图形镜头的底：灰蓝、比讲故事的镜头亮一档（参考片数据卡的底是 #5F6A88 一类）
 const tsOf=(c,its,lead=.35,gap=.7)=>its.map((it,i)=>c.at(it.at)??c.t0+lead+i*Math.min(gap,Math.max(.25,(c.d-lead-.5)/Math.max(1,its.length))));
 // 数字从 0 数到位：'$104' '3.6%' '-6.9%' 都认，前后的符号留着
 const cnt=(v,k)=>{const m=/^([^\d]*)([\d.,]+)(.*)$/.exec(String(v));if(!m)return String(v);const n=parseFloat(m[2].replace(/,/g,'')),dec=(m[2].split('.')[1]??'').length;return m[1]+(n*k).toFixed(dec)+m[3];};
 const numOf=v=>{const m=/([\d.,]+)/.exec(String(v));return m?parseFloat(m[1].replace(/,/g,'')):0;};
 const TOP=p=>p.title?350:(p.brow?230:170);
+// 斜台面：图形镜头的内容放在一张有透视的台面上，进场时从更斜的角度摆到位，然后不动。p.flat:true 可以关掉
+const T3=(th,inner,p,o={})=>{if(p.flat)return inner;const k=tail(th,.15),rx=o.rx??10,ry=o.ry??-11;return `<div class="v-abs" style="left:0;top:0;width:${W}px;height:${ZH}px;perspective:1600px;perspective-origin:50% 40%"><div class="v-abs" style="left:0;top:0;width:${W}px;height:${ZH}px;transform-style:preserve-3d;transform-origin:50% 50%;transform:rotateX(${f1(rx+16*(1-k))}deg) rotateY(${f1(ry-24*(1-k))}deg) rotateZ(${o.rz??1.6}deg) scale(${o.s??.95})">${inner}</div></div>`;};
+const Z=n=>`translateZ(${n}px)`;
 
 // ====== 9 vp-bars：几根柱子比大小 ======
 S('vp-bars',{real:()=>false,minDur:1.5,
  says:'几根柱子从底线往上长，数字跟着数上去；最要紧的那根是强调色',use:'几个数比大小：四家公司的投入、三年的营收',avoid:'超过 5 根；数差不多大（看不出高低）',
- need:['items'],help:{items:"[{label:'微软', value:'800', hl:true, at}]，2–5 根；value 可带符号和单位",unit:'左上角的单位小字',title:'标题',brow:'小字',bg:'垫底的图'},
+ need:['items'],help:{items:"[{label:'微软', value:'800', hl:true, at}]，2–5 根；value 可带符号和单位",unit:'左上角的单位小字',flat:'true = 不要斜台面，平着放',title:'标题',brow:'小字',bg:'垫底的图'},
  beats:p=>A(p.items).length,
  draw(p,c){markAva(p);const its=A(p.items),n=its.length,ts=tsOf(c,its),top=TOP(p)+90,by=1170,mh=by-top-70,mx=Math.max(...its.map(i=>numOf(i.value)),1e-9),w=Math.min(210,(900-(n-1)*36)/n),x0=(W-(n*w+(n-1)*36))/2;
-  return t=>{const th=t-c.t0;let h=base(p,c,t)+hd(p,th)+(p.unit?`<div class="v-cap" style="left:64px;top:${TOP(p)+10}px">${p.unit}</div>`:'')+`<div class="vp-base" style="left:60px;top:${by}px;width:${f1(960*oc(th/.4))}px"></div>`;
+  return t=>{const th=t-c.t0;let h=(p.unit?`<div class="v-cap" style="left:64px;top:${TOP(p)+10}px">${p.unit}</div>`:'')+`<div class="vp-base" style="left:60px;top:${by}px;width:${f1(960*oc(th/.4))}px"></div>`;
    its.forEach((it,i)=>{const k=oc((t-ts[i])/.8);if(k<=0)return;const hh=Math.max(14,mh*numOf(it.value)/mx)*k,x=x0+i*(w+36);
-    h+=`<div class="vp-col${it.hl?' hl':''}" style="left:${f1(x)}px;top:${f1(by-hh)}px;width:${f1(w)}px;height:${f1(hh)}px"></div><div class="vp-colv${it.hl?' hl':''}" style="left:${f1(x-40)}px;top:${f1(by-hh-78)}px;width:${f1(w+80)}px">${cnt(it.value,k)}</div><div class="vp-coll" style="left:${f1(x-40)}px;top:${by+18}px;width:${f1(w+80)}px;font-size:${fitU(it.label,44,w+70)}px;opacity:${f3(c01((t-ts[i])*5))}">${it.label}</div>`;});
-   return h+ava(p,t);};}
+    h+=`<div class="vp-col${it.hl?' hl':''}" style="${KV(it.c??i)}left:${f1(x)}px;top:${f1(by-hh)}px;width:${f1(w)}px;height:${f1(hh)}px"><i></i><b></b></div><div class="vp-colv${it.hl?' hl':''}" style="${KV(it.c??i)}left:${f1(x-40)}px;top:${f1(by-hh-116)}px;width:${f1(w+80)}px;transform:${Z(50)}">${cnt(it.value,k)}</div><div class="vp-coll" style="left:${f1(x-40)}px;top:${by+18}px;width:${f1(w+80)}px;font-size:${fitU(it.label,44,w+70)}px;opacity:${f3(c01((t-ts[i])*5))}">${it.label}</div>`;});
+   return base(p,c,t)+hd(p,th)+T3(th,h,p)+ava(p,t);};}
 });
 
 // ====== 10 vp-versus：两边对着看 ======
 S('vp-versus',{real:p=>!!(p.left?.img||p.right?.img),minDur:1.5,
  says:'两张卡从两边滑进来对着放，中间一个 VS；可以在某个时刻让一边赢',use:'"黄金不生利息，美债一年 4.9%"：两样东西对比',avoid:'三样以上（改 vp-bars / vp-rank）',
- need:['left','right'],help:{left:"{name:'黄金', value:'0%', sub:'不生利息', img, at}",right:'同 left',win:"{side:'right', at}：这时赢的一边亮起、另一边变灰",title:'标题',brow:'小字',bg:'垫底的图'},
+ need:['left','right'],help:{left:"{name:'黄金', value:'0%', sub:'不生利息', img, at}",right:'同 left',win:"{side:'right', at}：这时赢的一边亮起、另一边变灰",flat:'true = 不要斜台面，平着放',title:'标题',brow:'小字',bg:'垫底的图'},
  beats:p=>2+(p.win?1:0),
  draw(p,c){markAva(p);const L=p.left,Rr=p.right,tl=c.at(L.at)??c.t0+.3,tr=c.at(Rr.at)??c.t0+1,tw=p.win?c.at(p.win.at)??tr+.8:1e9,top=TOP(p)+60,ch=p.left.img||p.right.img?780:660;
   const card=(o,sd,ta,t)=>{const k=tail(t-ta+.08,.11);if(k<=0)return '';const win=oc((t-tw)/.3),lose=p.win&&p.win.side!==(sd<0?'left':'right'),hit=p.win&&!lose;
-   return `<div class="vp-vs${hit&&win>0?' on':''}" style="left:${f1((sd<0?44:556)+sd*620*(1-k))}px;top:${top}px;height:${ch}px;transform:rotate(${sd*-2}deg);filter:grayscale(${f3(lose?win:0)}) brightness(${f3(1-(lose?.4*win:0))})">${o.img?`<div class="ph"><img src="${o.img}"></div>`:''}<b style="font-size:${fitH(o.name,72,420)}px">${o.name}</b><em style="font-size:${fitU(String(o.value),150,420)}px">${cnt(o.value,oe((t-ta)/.9))}</em><u>${o.sub??''}</u></div>`;};
-  return t=>{const th=t-c.t0,kv=oe((t-tr)/.2);return base(p,c,t)+hd(p,th)+card(L,-1,tl,t)+card(Rr,1,tr,t)+(t>tr-.02?`<div class="vp-vsb" style="top:${top+ch/2-64}px;transform:scale(${f3(1+1.4*(1-kv))});opacity:${f3(c01((t-tr)*8))}">VS</div>`:'')+ava(p,t);};}
+   return `<div class="vp-vs${hit&&win>0?' on':''}" style="${KV(o.c??(sd<0?1:0))}left:${f1((sd<0?44:556)+sd*620*(1-k))}px;top:${top}px;height:${ch}px;transform:rotateY(${sd*-17}deg) rotate(${sd*-2}deg) ${Z(hit&&win>0?70*win:0)};filter:grayscale(${f3(lose?win:0)}) brightness(${f3(1-(lose?.4*win:0))})">${o.img?`<div class="ph"><img src="${o.img}"></div>`:''}<b style="font-size:${fitH(o.name,72,420)}px">${o.name}</b><em style="font-size:${fitU(String(o.value),150,420)}px">${cnt(o.value,oe((t-ta)/.9))}</em><u>${o.sub??''}</u></div>`;};
+  return t=>{const th=t-c.t0,kv=oe((t-tr)/.2);return base(p,c,t)+hd(p,th)+T3(th,card(L,-1,tl,t)+card(Rr,1,tr,t)+(t>tr-.02?`<div class="vp-vsb" style="top:${top+ch/2-64}px;transform:${Z(90)} scale(${f3(1+1.4*(1-kv))});opacity:${f3(c01((t-tr)*8))}">VS</div>`:''),p,{ry:0,rx:8,rz:0})+ava(p,t);};}
 });
 
 // ====== 11 vp-chain：一环扣一环 ======
 S('vp-chain',{real:p=>A(p.items).some(i=>i.img),minDur:2,
  says:'三四张卡从上往下一张接一张滑进来，中间的箭头长出来；最后一张是强调色',use:'因果链："打仗 → 油价涨 → 通胀 → 加息"',avoid:'超过 4 环；每环的字超过 8 个',
- need:['items'],help:{items:"[{title:'打仗推高油价', value:'$104', sub:'国际油价', img, at}]，3–4 环",title:'标题',brow:'小字',bg:'垫底的图'},
+ need:['items'],help:{items:"[{title:'打仗推高油价', value:'$104', sub:'国际油价', img, at}]，3–4 环",flat:'true = 不要斜台面，平着放',title:'标题',brow:'小字',bg:'垫底的图'},
  beats:p=>A(p.items).length,
  draw(p,c){markAva(p);const its=A(p.items),n=its.length,ts=tsOf(c,its),top=TOP(p)+30,gap=56,ch=Math.min(210,(1230-top-(n-1)*gap)/n);
-  return t=>{const th=t-c.t0;let h=base(p,c,t)+hd(p,th);
+  return t=>{const th=t-c.t0;let h='';
    its.forEach((it,i)=>{const k=tail(t-ts[i]+.08,.1);if(k<=0)return;const y=top+i*(ch+gap),last=i===n-1;
     if(i)h+=`<div class="vp-arrow" style="left:520px;top:${f1(y-gap+6)}px;height:${f1((gap-12)*oc((t-ts[i]+.1)/.25))}px"><i></i></div>`;
-    h+=`<div class="vp-link${last?' hl':''}" style="left:${f1(70+(i%2?1:-1)*900*(1-k))}px;top:${f1(y)}px;height:${f1(ch)}px">${it.img?`<span class="ph"><img src="${it.img}"></span>`:`<span class="no">${i+1}</span>`}<div><b style="font-size:${fitH(it.title,74,it.value?480:700)}px">${it.title}</b><u>${it.sub??''}</u></div>${it.value?`<em>${cnt(it.value,oe((t-ts[i])/.8))}</em>`:''}</div>`;});
-   return h+ava(p,t);};}
+    h+=`<div class="vp-link${last?' hl':''}" style="${KV(it.c??i)}left:${f1(70+(i%2?1:-1)*900*(1-k))}px;top:${f1(y)}px;height:${f1(ch)}px;transform:${Z(last?60:i*14)}">${it.img?`<span class="ph"><img src="${it.img}"></span>`:`<span class="no">${i+1}</span>`}<div><b style="font-size:${fitH(it.title,74,it.value?480:700)}px">${it.title}</b><u>${it.sub??''}</u></div>${it.value?`<em>${cnt(it.value,oe((t-ts[i])/.8))}</em>`:''}</div>`;});
+   return base(p,c,t)+hd(p,th)+T3(th,h,p)+ava(p,t);};}
 });
 
 // ====== 12 vp-list：几条要点 ======
 S('vp-list',{real:()=>false,minDur:1.5,
  says:'几条要点一条条翻出来，前面一个圆牌（序号、对勾或叉）',use:'"三个原因""两条出路""该做的和不该做的"',avoid:'超过 4 条；每条超过 12 个字',
- need:['items'],help:{items:"[{text:'利率还在涨', sub:'小字', mark:'ok'|'no'|'1', hl:true, at}]，2–4 条",title:'标题',brow:'小字',bg:'垫底的图'},
+ need:['items'],help:{items:"[{text:'利率还在涨', sub:'小字', mark:'ok'|'no'|'1', hl:true, at}]，2–4 条",flat:'true = 不要斜台面，平着放',title:'标题',brow:'小字',bg:'垫底的图'},
  beats:p=>A(p.items).length,
  draw(p,c){markAva(p);const its=A(p.items),n=its.length,ts=tsOf(c,its),top=TOP(p)+40,rh=Math.min(236,(1220-top)/n-24);
-  return t=>{const th=t-c.t0;let h=base(p,c,t)+hd(p,th);
+  return t=>{const th=t-c.t0;let h='';
    its.forEach((it,i)=>{const k=(t-ts[i]+.04)/.3;if(k<=0)return;const m=it.mark??String(i+1);
-    h+=`<div class="vp-row${it.hl?' hl':''}" style="left:60px;top:${f1(top+i*(rh+24))}px;height:${f1(rh)}px;opacity:${f3(c01(k*4))};transform:perspective(900px) rotateX(${f1(-88*(1-oe(k)))}deg)"><span class="bd ${m==='ok'?'ok':m==='no'?'no':''}">${m==='ok'?'✓':m==='no'?'✕':m}</span><div><b style="font-size:${fitH(it.text,80,760)}px">${it.text}</b>${it.sub?`<u>${it.sub}</u>`:''}</div></div>`;});
-   return h+ava(p,t);};}
+    h+=`<div class="vp-row${it.hl?' hl':''}" style="${KV(it.c??i)}left:60px;top:${f1(top+i*(rh+24))}px;height:${f1(rh)}px;opacity:${f3(c01(k*4))};transform:${Z(it.hl?56:0)} rotateX(${f1(-88*(1-oe(k)))}deg)"><span class="bd ${m==='ok'?'ok':m==='no'?'no':''}">${m==='ok'?'✓':m==='no'?'✕':m}</span><div><b style="font-size:${fitH(it.text,80,760)}px">${it.text}</b>${it.sub?`<u>${it.sub}</u>`:''}</div></div>`;});
+   return base(p,c,t)+hd(p,th)+T3(th,h,p)+ava(p,t);};}
 });
 
 // ====== 13 vp-line：走势线 ======
 S('vp-line',{real:()=>true,minDur:2,
  says:'一条走势线从左画到右，画到哪标到哪；线下面一层淡淡的颜色',use:'"金价一路掉回一年前""股价三个月翻倍"',avoid:'两条以上的线；没有真数据（不许编走势）',
- need:['data'],help:{data:"数字数组 [3200,3260,…]，或一个 json 文件（数字数组，或 [{v:…}] 这类对象数组，取第一个数字字段）",marks:"[{i:103, text:'1月最高 $5,318', at}]：i 是第几个点，-1 是最后一个",drawTo:'画完的时刻（默认 1.6 秒画完）',unit:'单位小字',down:'true = 跌的走势，线和面用冷色',title:'标题',brow:'小字',source:'数据来源小字（要写）',bg:'垫底的图'},
+ need:['data'],help:{data:"数字数组 [3200,3260,…]，或一个 json 文件（数字数组，或 [{v:…}] 这类对象数组，取第一个数字字段）",marks:"[{i:103, text:'1月最高 $5,318', at}]：i 是第几个点，-1 是最后一个",drawTo:'画完的时刻（默认 1.6 秒画完）',unit:'单位小字',down:'true = 跌的走势，线和面用冷色',flat:'true = 不要斜台面，平着放',title:'标题',brow:'小字',source:'数据来源小字（要写）',bg:'垫底的图'},
  beats:p=>1+A(p.marks).length,
  async prep(p){let d=p.data;if(typeof d==='string')d=await (await fetch(d)).json();if(d&&!Array.isArray(d))d=Object.values(d).find(Array.isArray)??[];p._d=d.map(x=>typeof x==='number'?x:Array.isArray(x)?+x[x.length-1]:+Object.values(x).find(v=>typeof v==='number')).filter(x=>!isNaN(x));},
  check(p,c){if(!p.source)c.warn('走势线没写 source：数据从哪来的要写在屏上');},
  draw(p,c){markAva(p);const d=p._d??[],n=d.length,top=TOP(p)+30,cw=960,chh=1210-top,pad=44,mn=Math.min(...d),mx=Math.max(...d),X=i=>pad+(cw-2*pad)*i/Math.max(1,n-1),Y=v=>pad+60+(chh-2*pad-90)*(1-(v-mn)/Math.max(1e-9,mx-mn));
   const pts=d.map((v,i)=>`${f1(X(i))},${f1(Y(v))}`),t1=c.at(p.drawTo)??c.t0+1.9,mk=A(p.marks).map(m=>({...m,i:m.i<0?n+m.i:m.i})),tm=mk.map((m,j)=>c.at(m.at)??lerp(c.t0+.3,t1,m.i/Math.max(1,n-1)));
   return t=>{const th=t-c.t0,k=tail(th,.12),g=c01((t-c.t0-.3)/Math.max(.3,t1-c.t0-.3)),m=Math.max(1,Math.round(g*(n-1)));
-   let h=base(p,c,t)+hd(p,th)+`<div class="vp-chart${p.down?' down':''}" style="left:60px;top:${f1(top+(1-k)*120)}px;width:${cw}px;height:${f1(chh)}px;opacity:${f3(c01(th*8))}">${p.unit?`<u class="un">${p.unit}</u>`:''}<svg width="${cw}" height="${f1(chh)}" viewBox="0 0 ${cw} ${f1(chh)}"><defs><linearGradient id="vpg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".42"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>${[.25,.5,.75].map(q=>`<line x1="${pad}" x2="${cw-pad}" y1="${f1(pad+60+(chh-2*pad-90)*q)}" y2="${f1(pad+60+(chh-2*pad-90)*q)}" stroke="rgba(255,255,255,.1)" stroke-width="2"/>`).join('')}${g>0&&n>1?`<polygon points="${pts.slice(0,m+1).join(' ')} ${f1(X(m))},${f1(chh-pad)} ${pad},${f1(chh-pad)}" fill="url(#vpg)"/><polyline points="${pts.slice(0,m+1).join(' ')}" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${f1(X(m))}" cy="${f1(Y(d[m]))}" r="13" fill="#fff" stroke="currentColor" stroke-width="6"/>`:''}</svg>${mk.map((mm,j)=>{const kk=oe((t-tm[j])/.22);if(kk<=0||mm.i>m)return '';const lx=X(mm.i),ly=Y(d[mm.i]);return `<i class="pt" style="left:${f1(lx-9)}px;top:${f1(ly-9)}px"></i><span class="mk" style="${lx>cw/2?`right:${f1(cw-lx-10)}px`:`left:${f1(lx-10)}px`};top:${f1(ly<170?ly+26:ly-78)}px;transform:scale(${f3(kk)})">${mm.text}</span>`;}).join('')}</div>`;
+   let h=`<div class="vp-chart${p.down?' down':''}" style="${KV(p.c??(p.down?2:1))}left:60px;top:${f1(top+(1-k)*120)}px;width:${cw}px;height:${f1(chh)}px;opacity:${f3(c01(th*8))}">${p.unit?`<u class="un">${p.unit}</u>`:''}<svg width="${cw}" height="${f1(chh)}" viewBox="0 0 ${cw} ${f1(chh)}"><defs><linearGradient id="vpg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".42"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>${[.25,.5,.75].map(q=>`<line x1="${pad}" x2="${cw-pad}" y1="${f1(pad+60+(chh-2*pad-90)*q)}" y2="${f1(pad+60+(chh-2*pad-90)*q)}" stroke="rgba(255,255,255,.1)" stroke-width="2"/>`).join('')}${g>0&&n>1?`<polygon points="${pts.slice(0,m+1).join(' ')} ${f1(X(m))},${f1(chh-pad)} ${pad},${f1(chh-pad)}" fill="url(#vpg)"/><polyline points="${pts.slice(0,m+1).join(' ')}" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${f1(X(m))}" cy="${f1(Y(d[m]))}" r="13" fill="#fff" stroke="currentColor" stroke-width="6"/>`:''}</svg>${mk.map((mm,j)=>{const kk=oe((t-tm[j])/.22);if(kk<=0||mm.i>m)return '';const lx=X(mm.i),ly=Y(d[mm.i]);return `<i class="pt" style="left:${f1(lx-9)}px;top:${f1(ly-9)}px"></i><span class="mk" style="${lx>cw/2?`right:${f1(cw-lx-10)}px`:`left:${f1(lx-10)}px`};top:${f1(ly<170?ly+26:ly-78)}px;transform:scale(${f3(kk)})">${mm.text}</span>`;}).join('')}</div>`;
    if(p.source)h+=`<div class="v-cap" style="left:62px;top:1238px">${p.source}</div>`;
-   return h+ava(p,t);};}
+   return base(p,c,t)+hd(p,th)+T3(th,h,p,{rx:12,ry:-13})+ava(p,t);};}
 });
 
 // ====== 14 vp-photo：一张图当主角 ======
@@ -307,7 +319,7 @@ S('vp-quote',{real:p=>!!p.img,minDur:1.5,
  need:['lines','name'],help:{lines:"['买得越多','<em>省得越多</em>']，1–3 行，<em> 是重点",name:'谁说的',tag:'身份',img:'头像（可不写）',at:'每行的时刻',brow:'小字',bg:'垫底的图'},
  beats:p=>A(p.lines).length+1,
  draw(p,c){markAva(p);const ls=A(p.lines),n=ls.length,ts=ls.map((_,i)=>c.at(A(p.at)[i])??c.t0+.4+i*.6),fs=Math.min(...ls.map(l=>fitH(l,128,900))),y0=560-n*fs*.6,tn=ts[n-1]+.45;
-  return t=>{const th=t-c.t0,kq=oe(th/.25);let h=base(p,c,t)+(p.brow?`<div class="v-brow" style="left:62px;top:150px;${wipe(oc(th/.3))}">${p.brow}</div>`:'')+`<div class="vp-qm" style="left:56px;top:${f1(y0-250)}px;transform:scale(${f3(1+.9*(1-kq))});opacity:${f3(c01(th*6))}">“</div>`;
+  return t=>{const th=t-c.t0,kq=oe(th/.25);let h=base(p,c,t)+(p.brow?`<div class="v-brow" style="left:62px;top:150px;${wipe(oc(th/.3))}">${p.brow}</div>`:'')+`<div class="vp-qm" style="${KV(p.c??1)}left:56px;top:${f1(y0-250)}px;transform:scale(${f3(1+.9*(1-kq))});opacity:${f3(c01(th*6))}">“</div>`;
    ls.forEach((l,i)=>{const k=oc((t-ts[i])/.4);if(k>0)h+=`<div class="vp-ql" style="left:74px;top:${f1(y0+i*fs*1.3)}px;font-size:${fs}px;${wipe(k)}">${l}</div>`;});
    const kn=tail(t-tn,.1);if(kn>0)h+=`<div class="vp-plate" style="left:${f1(70-(1-kn)*700)}px;top:${f1(y0+n*fs*1.3+70)}px">${p.img?`<span><img src="${p.img}"></span>`:''}<div><b>${p.name}</b><u>${p.tag??''}</u></div></div>`;
    return h+ava(p,t);};}
@@ -316,38 +328,38 @@ S('vp-quote',{real:p=>!!p.img,minDur:1.5,
 // ====== 16 vp-timeline：时间线 ======
 S('vp-timeline',{real:()=>false,minDur:2,
  says:'一条竖线往下长，走到哪个日子，圆点亮起、那天的事从右边滑进来',use:'"9 月加了一次息，12 月可能再加"：几个有日期的节点',avoid:'超过 4 个节点；没有先后顺序的事（改 vp-list）',
- need:['items'],help:{items:"[{date:'11月12日', text:'黄仁勋辞职', sub, hl:true, at}]，2–4 个",title:'标题',brow:'小字',bg:'垫底的图'},
+ need:['items'],help:{items:"[{date:'11月12日', text:'黄仁勋辞职', sub, hl:true, at}]，2–4 个",flat:'true = 不要斜台面，平着放',title:'标题',brow:'小字',bg:'垫底的图'},
  beats:p=>A(p.items).length,
  draw(p,c){markAva(p);const its=A(p.items),n=its.length,ts=tsOf(c,its),top=TOP(p)+50,sp=Math.min(260,(1210-top)/n);
-  return t=>{const th=t-c.t0;let h=base(p,c,t)+hd(p,th);const reach=its.reduce((a,_,i)=>Math.max(a,(i+oc((t-ts[i]+.3)/.4))*sp),0);
+  return t=>{const th=t-c.t0;let h='';const reach=its.reduce((a,_,i)=>Math.max(a,(i+oc((t-ts[i]+.3)/.4))*sp),0);
    h+=`<div class="vp-tl" style="left:128px;top:${top}px;height:${f1(Math.min(reach,(n-1)*sp+60))}px"></div>`;
    its.forEach((it,i)=>{const k=tail(t-ts[i]+.05,.1);if(k<=0)return;const y=top+i*sp;
-    h+=`<i class="vp-dot${it.hl?' hl':''}" style="left:106px;top:${f1(y+26)}px;transform:scale(${f3(oe((t-ts[i]+.05)/.2))})"></i><div class="vp-tli${it.hl?' hl':''}" style="left:${f1(190+(1-k)*900)}px;top:${f1(y)}px;height:${f1(sp-40)}px"><u>${it.date}</u><b style="font-size:${fitH(it.text,70,750)}px">${it.text}</b>${it.sub?`<s>${it.sub}</s>`:''}</div>`;});
-   return h+ava(p,t);};}
+    h+=`<i class="vp-dot${it.hl?' hl':''}" style="${KV(it.c??i)}left:106px;top:${f1(y+26)}px;transform:scale(${f3(oe((t-ts[i]+.05)/.2))})"></i><div class="vp-tli${it.hl?' hl':''}" style="${KV(it.c??i)}left:${f1(190+(1-k)*900)}px;top:${f1(y)}px;height:${f1(sp-40)}px;transform:${Z(it.hl?56:0)}"><u>${it.date}</u><b style="font-size:${fitH(it.text,70,750)}px">${it.text}</b>${it.sub?`<s>${it.sub}</s>`:''}</div>`;});
+   return base(p,c,t)+hd(p,th)+T3(th,h,p)+ava(p,t);};}
 });
 
 // ====== 17 vp-share：占比（一个圆环） ======
 S('vp-share',{real:()=>false,minDur:1.5,
  says:'一个粗圆环画到那个百分比停住，中间的数跟着数上去',use:'"市场押 75% 会加息""四家占了全行业六成"',avoid:'要比三样以上的占比（改 vp-bars / vp-rank）',
- need:['value'],help:{value:"'75%'",label:'圆环中间数字下面的字',note:'圆环下面一行说明',at:'开始画的时刻',title:'标题',brow:'小字',bg:'垫底的图'},
+ need:['value'],help:{value:"'75%'",label:'圆环中间数字下面的字',note:'圆环下面一行说明',at:'开始画的时刻',flat:'true = 不要斜台面，平着放',title:'标题',brow:'小字',bg:'垫底的图'},
  beats:()=>1,
  draw(p,c){markAva(p);const ta=c.at(p.at)??c.t0+.35,v=Math.min(100,numOf(p.value)),r=290,C=2*Math.PI*r,cy=TOP(p)+60+r+50;
   return t=>{const th=t-c.t0,k=oc((t-ta)/1.1),kk=tail(th,.12);
-   let h=base(p,c,t)+hd(p,th)+`<svg class="vp-ring" style="left:${540-r-50}px;top:${f1(cy-r-50+(1-kk)*80)}px;opacity:${f3(c01(th*7))}" width="${2*r+100}" height="${2*r+100}" viewBox="0 0 ${2*r+100} ${2*r+100}"><circle cx="${r+50}" cy="${r+50}" r="${r}" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="78"/><circle cx="${r+50}" cy="${r+50}" r="${r}" fill="none" stroke="currentColor" stroke-width="78" stroke-linecap="round" stroke-dasharray="${f1(C*v/100*k)} ${f1(C)}" transform="rotate(-90 ${r+50} ${r+50})"/></svg><div class="vp-ringn" style="top:${f1(cy-160)}px">${cnt(p.value,k)}</div>${p.label?`<div class="vp-ringl" style="top:${f1(cy+96)}px;font-size:${fitU(p.label,50,440)}px">${p.label}</div>`:''}`;
+   let h=`<svg class="vp-ring" style="${KV(p.c??2)}left:${540-r-50}px;top:${f1(cy-r-50+(1-kk)*80)}px;opacity:${f3(c01(th*7))}" width="${2*r+100}" height="${2*r+100}" viewBox="0 0 ${2*r+100} ${2*r+100}"><circle cx="${r+50}" cy="${r+72}" r="${r}" fill="none" stroke="rgba(4,5,24,.55)" stroke-width="78"/><circle cx="${r+50}" cy="${r+50}" r="${r}" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="78"/><circle class="th" cx="${r+50}" cy="${r+72}" r="${r}" fill="none" stroke-width="78" stroke-linecap="round" stroke-dasharray="${f1(C*v/100*k)} ${f1(C)}" transform="rotate(-90 ${r+50} ${r+72})"/><circle cx="${r+50}" cy="${r+50}" r="${r}" fill="none" stroke="currentColor" stroke-width="78" stroke-linecap="round" stroke-dasharray="${f1(C*v/100*k)} ${f1(C)}" transform="rotate(-90 ${r+50} ${r+50})"/></svg><div class="vp-ringn" style="top:${f1(cy-160)}px;transform:${Z(70)}">${cnt(p.value,k)}</div>${p.label?`<div class="vp-ringl" style="top:${f1(cy+96)}px;font-size:${fitU(p.label,50,440)}px">${p.label}</div>`:''}`;
    if(p.note){const kn=oc((t-ta-.9)/.4);if(kn>0)h+=`<div class="vp-ringl" style="top:${f1(cy+r+90)}px;font-size:48px;${wipe(kn)}">${p.note}</div>`;}
-   return h+ava(p,t);};}
+   return base(p,c,t)+hd(p,th)+T3(th,h,p,{rx:16,ry:-14})+ava(p,t);};}
 });
 
 // ====== 18 vp-rank：排行 ======
 S('vp-rank',{real:()=>false,minDur:1.5,
  says:'几行横条一行行出来，条的长短就是大小，数字跟在条尾；最要紧的那行是强调色',use:'"亏损榜第一""四家里谁花得最多"：有名次的比较',avoid:'超过 5 行',
- need:['items'],help:{items:"[{name:'微软', value:'800亿', hl:true, at}]，3–5 行，照名次排好",title:'标题',brow:'小字',bg:'垫底的图'},
+ need:['items'],help:{items:"[{name:'微软', value:'800亿', hl:true, at}]，3–5 行，照名次排好",flat:'true = 不要斜台面，平着放',title:'标题',brow:'小字',bg:'垫底的图'},
  beats:p=>A(p.items).length,
  draw(p,c){markAva(p);const its=A(p.items),n=its.length,ts=tsOf(c,its,.35,.5),top=TOP(p)+40,rh=Math.min(214,(1220-top)/n-22),mx=Math.max(...its.map(i=>numOf(i.value)),1e-9);
-  return t=>{const th=t-c.t0;let h=base(p,c,t)+hd(p,th);
+  return t=>{const th=t-c.t0;let h='';
    its.forEach((it,i)=>{const k=tail(t-ts[i]+.05,.1);if(k<=0)return;const g=oc((t-ts[i])/.8),bw=Math.max(30,620*numOf(it.value)/mx)*g;
-    h+=`<div class="vp-rk${it.hl?' hl':''}" style="left:${f1(60-(1-k)*900)}px;top:${f1(top+i*(rh+22))}px;height:${f1(rh)}px"><span>${i+1}</span><b style="font-size:${fitH(it.name,66,250)}px">${it.name}</b><i style="width:${f1(bw)}px"></i><em>${cnt(it.value,g)}</em></div>`;});
-   return h+ava(p,t);};}
+    h+=`<div class="vp-rk${it.hl?' hl':''}" style="${KV(it.c??i)}left:${f1(60-(1-k)*900)}px;top:${f1(top+i*(rh+22))}px;height:${f1(rh)}px;transform:${Z(it.hl?56:0)}"><span>${i+1}</span><b style="font-size:${fitH(it.name,66,250)}px">${it.name}</b><i style="width:${f1(bw)}px"></i><em>${cnt(it.value,g)}</em></div>`;});
+   return base(p,c,t)+hd(p,th)+T3(th,h,p)+ava(p,t);};}
 });
 
 // ====== 19 vp-chapter：分段的小标题 ======
@@ -357,7 +369,7 @@ S('vp-chapter',{real:()=>false,minDur:.8,
  beats:()=>1,
  draw(p,c){const fs=fitH(p.title,210,900);
   return t=>{const th=t-c.t0,k=tail(th,.11),kl=oc(th/.45);
-   return base(p,c,t)+(p.no?`<div class="vp-chno" style="left:${f1(64-(1-k)*500)}px;top:430px">${p.no}</div>`:'')+`<div class="vp-chl" style="left:64px;top:${p.no?700:560}px;width:${f1(952*kl)}px"></div><div class="vp-word vp-it" style="left:${f1(60+(1-k)*1100)}px;top:${p.no?740:600}px;width:auto;font-size:${fs}px;text-align:left;transform:rotate(-4deg);transform-origin:0 60%">${pword(p.title,'accent',null,false)}</div>${p.en?`<div class="v-en" style="left:70px;top:${(p.no?740:600)+fs*1.2+30}px;font-size:32px;${wipe(oc((th-.35)/.4))}">${p.en}</div>`:''}`;};}
+   return base(p,c,t)+(p.no?`<div class="vp-word vp-it vp-chno" style="left:${f1(64-(1-k)*500)}px;top:400px;width:auto">${pword(p.no,'c1',null,false)}</div>`:'')+`<div class="vp-chl" style="${KV(1)}left:64px;top:${p.no?700:560}px;width:${f1(952*kl)}px"></div><div class="vp-word vp-it" style="left:${f1(60+(1-k)*1100)}px;top:${p.no?740:600}px;width:auto;font-size:${fs}px;text-align:left;transform:rotate(-4deg);transform-origin:0 60%">${pword(p.title,'accent',null,false)}</div>${p.en?`<div class="v-en" style="left:70px;top:${(p.no?740:600)+fs*1.2+30}px;font-size:32px;${wipe(oc((th-.35)/.4))}">${p.en}</div>`:''}`;};}
 });
 
 // ====== 20 vp-ask：把问题抛给观众 ======
