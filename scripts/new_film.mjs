@@ -2,18 +2,20 @@
 //   node scripts/new_film.mjs <片子目录>            新片：film.js 是带注释的镜头表起点，script.json 是三句示例
 //   node scripts/new_film.mjs <片子目录> --demo     示例片：每个场景用一次（kit/demo/），看模板长什么样、照着抄写法
 //   node scripts/new_film.mjs <片子目录> --demo2    示例片二：后加的 11 个场景各用一次（kit/demo2/）
+//   node scripts/new_film.mjs <片子目录> --vertical 竖屏新片（1080×1920）：starter-v/ 起步，场景查 kit/VERTICAL.md
+//   node scripts/new_film.mjs <片子目录> --demo-v   竖屏示例片：不带口播的竖屏场景各用一次（kit/demo-v/）
 //   node scripts/new_film.mjs <片子目录> --sync     老片子：只把 lib/ 和 assets/kit/ 更新到 skill 的最新版（film.js、素材不动）
 // 字体不拷：fonts/ 是指向字体目录的联接，联接建不了才拷。字体目录写在 scripts/local.json 的 fonts_dir（没写就用 skill 里的 fonts/）。
 import fs from 'node:fs'; import path from 'node:path'; import {fileURLToPath} from 'node:url';
 import {stub} from './timeline_stub.mjs';
 
 const SK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const args = process.argv.slice(2), dst = args.find(a => !a.startsWith('--')), DEMO2 = args.includes('--demo2'), DEMO = DEMO2 || args.includes('--demo'), SYNC = args.includes('--sync');
-if (!dst) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(0, 6).join('\n')); process.exit(1); }
+const args = process.argv.slice(2), dst = args.find(a => !a.startsWith('--')), DEMO2 = args.includes('--demo2'), DEMOV = args.includes('--demo-v'), VERT = DEMOV || args.includes('--vertical'), DEMO = DEMO2 || DEMOV || args.includes('--demo'), SYNC = args.includes('--sync');
+if (!dst) { console.log(fs.readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(0, 8).join('\n')); process.exit(1); }
 const D = path.resolve(dst);
 let local = {}; try { local = JSON.parse(fs.readFileSync(path.join(SK, 'scripts/local.json'), 'utf8')); } catch {}
 const FONTS = path.resolve(local.fonts_dir ?? path.join(SK, 'fonts'));
-const LIB = ['scripts/stage25d.js', 'scripts/film_base.js', 'scripts/moves.js', 'kit/kit.js', 'kit/scenes.js', 'kit/scenes_plus.js', 'kit/host.js', 'kit/kit.css'];
+const LIB = ['scripts/stage25d.js', 'scripts/film_base.js', 'scripts/moves.js', 'kit/kit.js', 'kit/scenes.js', 'kit/scenes_plus.js', 'kit/host.js', 'kit/kit.css', 'kit/vert.js', 'kit/vert.css', 'kit/vpro.js', 'kit/vpro.css'];
 const cp = (a, b) => { fs.mkdirSync(path.dirname(b), {recursive: true}); fs.copyFileSync(a, b); };
 
 function copyLib() {
@@ -37,9 +39,9 @@ if (SYNC) {
 }
 if (fs.existsSync(D) && fs.readdirSync(D).length) { console.error(`目标已存在且不是空的：${D}`); process.exit(1); }
 fs.mkdirSync(D, {recursive: true});
-const src = path.join(SK, DEMO2 ? 'kit/demo2' : DEMO ? 'kit/demo' : 'starter');
-cp(path.join(SK, 'starter/index.html'), path.join(D, 'index.html'));
-cp(path.join(SK, 'starter/film.css'), path.join(D, 'film.css'));
+const src = path.join(SK, DEMOV ? 'kit/demo-v' : VERT ? 'starter-v' : DEMO2 ? 'kit/demo2' : DEMO ? 'kit/demo' : 'starter'), ST = VERT ? 'starter-v' : 'starter';
+cp(path.join(SK, ST, 'index.html'), path.join(D, 'index.html'));
+cp(path.join(SK, ST, 'film.css'), path.join(D, 'film.css'));
 cp(path.join(src, 'film.js'), path.join(D, 'film.js'));
 cp(path.join(src, 'script.json'), path.join(D, 'script.json'));
 copyLib(); linkFonts();
@@ -53,10 +55,10 @@ console.log('下一步：');
 const steps = DEMO ? [] : [
   `写 script.json（文案，一句一个 id，写法见 kit/README.md「文案 script.json」）`,
   `node "${TS}" "${path.join(D, 'script.json')}"    重算时间线（每改一次 script.json 就重跑一次）`,
-  `写 film.js（每镜先想 says，再从 kit/README.md 的表里选场景）`];
+  `写 film.js（每镜先想 says，再从 ${VERT ? 'kit/VERTICAL.md' : 'kit/README.md'} 的表里选场景）`];
 steps.push(`node "${R}" --dir "${D}" --check            查镜头表（几秒钟，不渲染），改到零错误`,
   `node "${R}" --dir "${D}" --sheet            每镜三帧拼一张图（out/sheet.png），自己先看一遍`,
-  `node "${R}" --dir "${D}" --video --h 720    渲 720p 预览（没声音）`);
+  `node "${R}" --dir "${D}" --video --h 720    渲 720p 预览（没声音${VERT ? '，竖屏出来是 720×1280' : ''}）`);
 steps.forEach((s, i) => console.log(`  ${i + 1}. ${s}`));
-if (DEMO) console.log('  示例片的写法在 film.js，每个场景的参数见 kit/README.md');
+if (DEMO) console.log('  示例片的写法在 film.js，每个场景的参数见 ' + (VERT ? 'kit/VERTICAL.md' : 'kit/README.md'));
 console.log(`注意：fonts\\ 是指向字体目录的联接。删这个片子目录前先拆联接（只删联接，不删字体）：node -e "require('fs').rmdirSync(process.argv[1])" "${path.join(D, 'fonts')}"，再删目录。`);

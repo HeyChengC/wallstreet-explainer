@@ -10,7 +10,28 @@
 
 **无人出镜版**：《AI 到底有多烧钱》，77 秒，GIF 是前 29 秒。
 
-GIF 没有声音。片中新闻截图和实拍为引用，出处见 [CREDITS.md](examples/ai-burn-money/CREDITS.md)。
+<img src="examples/nvda-vertical/frames.jpg" alt="竖屏真人口播样片" width="100%">
+
+**竖屏真人口播版**：《英伟达拒绝老黄回归》，29 秒，9:16。上面是每一镜落定的一帧。
+
+<img src="examples/nvda-vertical/frames_nohost.jpg" alt="竖屏无人出镜样片" width="100%">
+
+**竖屏无人出镜版**：同一条片、同一份镜头表，把她的实拍换成图，配音换成 TTS。
+
+GIF 没有声音。片中新闻截图和实拍为引用，出处见 [CREDITS.md](examples/ai-burn-money/CREDITS.md) 和 [竖屏样片的出处](examples/nvda-vertical/README.md)。
+
+## 四种模式
+
+| | 有真人口播 | 没有人出镜 |
+|---|---|---|
+| **横屏 16:9**（B 站、YouTube） | 围着人做：证据挂在她身后的墙上 | 把新闻里的当事人抠出来，站在大字前面 |
+| **竖屏 9:16**（小红书、抖音、视频号） | 她是底，大字和道具压在她胸口；讲证据时她缩到角上的圆头像里 | 同一份镜头表，底换成图，主角换成东西 |
+
+说"竖屏""9:16""手机上看"就走竖屏；给了口播视频就走真人口播，没给就走无人出镜。
+
+竖屏版有 20 个现成的组件，一个强调色管全片（从口播画面里取），加上会动的道具（真东西的抠图或生图）。下面是其中 12 个图形组件的样张，全部见 [kit/VERTICAL.md](kit/VERTICAL.md)：
+
+<img src="examples/vpro-gallery/gallery12.jpg" alt="竖屏图形组件样张" width="100%">
 
 ## 能做什么
 

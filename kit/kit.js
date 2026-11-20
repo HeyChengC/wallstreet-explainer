@@ -289,11 +289,11 @@ async function use(F){
  // ---------- 参数名查一遍：写错的参数（lable、untill）模板不认识，会被静默丢掉，看不了图的模型根本发现不了 ----------
  // 每个场景只认自己的参数：help、defaults、need 里写了的，加上模板代码里读到的 p.xxx（board 家族的代码在 def.code 里）。
  // 嵌套在 items / nodes / steps 里的字段名，对照模板代码里出现过的所有名字。note 随便写备注，'_' 开头的不查，custom 不查。
- const FREE=['scene','until','says','enter','tone','glow','dust','throughAt','throughScale','note','host','pipIn'];   // host：'pip' / 'window'，真人口播层（host.js）
+ const FREE=['scene','until','says','enter','tone','glow','dust','throughAt','throughScale','note','host','pipIn','skin','hero'];   // host：'pip' / 'window'，真人口播层（host.js）
  let VOCAB;
  async function vocab(){
   if(VOCAB!==undefined)return VOCAB;
-  const urls=[...document.scripts].map(s=>s.src).filter(s=>/\/(stage25d|film_base|moves|kit|scenes|scenes_plus|host)\.js(\?.*)?$/.test(s));
+  const urls=[...document.scripts].map(s=>s.src).filter(s=>/\/(stage25d|film_base|moves|kit|scenes|scenes_plus|host|vert|vpro)\.js(\?.*)?$/.test(s));
   try{const set=new Set();for(const u of urls){const t=await (await fetch(u)).text();for(const m of t.matchAll(/[A-Za-z_$][\w$]*/g))set.add(m[0]);}VOCAB=urls.length>=2&&set.size>500?set:null;}
   catch{VOCAB=null;}   // 双击直接打开（file://）读不到源码：这一项不查
   return VOCAB;
@@ -352,7 +352,7 @@ async function use(F){
    if(p.glow&&!def.glow)c.warn(`开了 glow（颜色光）：原版只有人物镜头（person）身后有一团品牌色，别的场景开了像零几年的 PPT；确定要就留着`);
    if(sp.dust)c.warn('dust（前景浮尘）已经去掉了，写了也不画：前后层用实拍和抠像来做');
    const enN=[...A(sp.nodes),...A(sp.items),...A(sp.cards),sp.left,sp.right].filter(n=>n&&typeof n==='object'&&n.en).length;
-   if(enN)c.warn(`${enN} 个圆盘 / 节点 / 卡片 / 表头写了 en（英文小字）：英文小字只跟着眉题和片名，别处删掉`);
+   if(enN&&!def.vert)c.warn(`${enN} 个圆盘 / 节点 / 卡片 / 表头写了 en（英文小字）：英文小字只跟着眉题和片名，别处删掉`);
    if(sp.brow&&A(sp.nodes).some(n=>n.type==='num'&&n.brow))c.warn('整张图的 brow 和 num 节点的 brow 同时写了：一帧最多一组眉题');
    if(enter==='flat'&&c.prev&&!(typeof def.flat==='function'?def.flat(p):def.flat))c.warn(`enter:'flat'（上一镜倒成桌面）只给"站在桌面上"的场景用（${Object.keys(SCENES).filter(k=>SCENES[k].flat).join('、')}；title、statement 不带 items 时）；${sp.scene} 铺满画面，会和倒下去的上一镜叠在一起，改用 cut 或 blur`);
    // 背景：enter:'flat' 时是上一镜倒下去的桌面，否则是这一镜自己的舞台
@@ -393,7 +393,7 @@ async function use(F){
   else if((F.T.pre??0)>.35)warn(`script.json 的 pre 是 ${F.T.pre}：开头留白不超过 0.35 秒`);
   // 真素材要够：原版一半左右的画面是实拍、新闻原文、当事人。只用了占位图（assets/kit/ph/）的镜头不算
   const onlyPh=s=>{const im=[...scanImgs(s.p)];return im.length>0&&im.every(x=>x.includes('assets/kit/ph/'));};
-  const real=s=>!onlyPh(s)&&(['footage','montage','frames','popup','person','desk','device'].includes(s.scene)||(s.scene==='article'&&s.p.img)||(['title','statement'].includes(s.scene)&&A(s.p.items).length)||(s.scene==='profile'&&(s.p.img||s.p.photo))||(s.scene==='quote'&&s.p.who?.photo));
+  const real=s=>!onlyPh(s)&&(!!SCENES[s.scene].real?.(s.p)||['footage','montage','frames','popup','person','desk','device'].includes(s.scene)||(s.scene==='article'&&s.p.img)||(['title','statement'].includes(s.scene)&&A(s.p.items).length)||(s.scene==='profile'&&(s.p.img||s.p.photo))||(s.scene==='quote'&&s.p.who?.photo));
   const nr=out.filter(real).length;
   if(out.length>=5&&nr<out.length*.4)warn(`真素材的镜头只有 ${nr}/${out.length}（footage、person、desk、article 截图、montage、frames……；只用了占位图的不算）：少于四成就会"全是图形"，原版一半左右是实拍、原文和当事人`);
   // 同一家公司全片同一个颜色
@@ -403,6 +403,23 @@ async function use(F){
   for(const k in seen){const cs=Object.keys(seen[k]);if(cs.length>1)warn(`「${k}」在不同镜头里用了 ${cs.length} 种颜色（${cs.map(cc=>`${cc}：第 ${[...new Set(seen[k][cc])].join('、')} 镜`).join('；')}）：同一家公司全片同一个颜色，color 直接写公司名最稳`);}
   const nst=out.filter(s=>s.scene==='statement').length;if(nst>3)warn(`全片 ${nst} 句金句（statement）：一条片两三次，多了就不金了`);
   const nch=out.filter(s=>s.scene==='title'&&s.p.kind==='chapter').length;if(nch>3)warn(`全片 ${nch} 张章节卡：一条片最多三张`);
+  // 竖屏片的导演自检：全片最重的一镜、她露脸的比例、证据别连太多、质感靠图
+  if(out.length>=5&&out.every(s=>SCENES[s.scene].vert)){
+   const hs=out.map((s,i)=>s.p.hero?i+1:0).filter(Boolean);
+   if(!hs.length)warn("全片没有标最重的一镜（hero:true）：观众看完只会记住一个画面，先定是哪一镜（通常是答案、最大的那个数），在那一镜写 hero:true，它进场会多一下重拍");
+   else if(hs.length>1)warn(`第 ${hs.join('、')} 镜都写了 hero:true：最重的一镜全片只能有一个，都重等于都不重`);
+   const isH=s=>s.scene.startsWith('v-host');
+   if(out.some(isH)){
+    const ht=out.filter(isH).reduce((a,s)=>a+s.t1-s.t0,0),r=ht/dur;
+    if(r<.3)warn(`她全屏出镜只占 ${Math.round(r*100)}%：少于三成，观众会忘了是谁在讲；证据之间多回到她`);
+    if(r>.62)warn(`她全屏出镜占了 ${Math.round(r*100)}%：超过六成就是纯口播了，把能看见的东西（数、原文、实拍）拿出来单独给镜头`);
+    let run=0,from=0;out.forEach((s,i)=>{if(isH(s)){if(run>3)warn(`第 ${from}–${i} 镜连着 ${run} 镜没回到她：每段证据最多 3 镜，中间插一镜她`);run=0;}else{if(!run)from=i+1;run++;}});
+    for(let i=1;i<out.length;i++){const a=out[i-1],b=out[i],z=s=>JSON.stringify(s.p.zoom??1);if(isH(a)&&isH(b)&&z(a)===z(b))warn(`第 ${i}、${i+1} 镜她的景别一样（zoom）：连着两镜都是她，景别要换一档，不然像没剪`);}
+   }
+   out.forEach((s,i)=>{const tag=`第 ${i+1} 镜（${s.scene}）`;
+    if(s.scene==='v-chain'&&!A(s.p.items).some(x=>x.img))warn(`${tag}每一环都没有插画（img）：白板上只有色卡会显得平，照 VERTICAL.md"质感靠图"给每环配一幅白底小插画`);
+    if(s.scene==='v-title'&&!s.p.pic&&!s.p.img)warn(`${tag}只有字：下半屏会空，写 pic（下面开窗放一张图）或 img（整屏垫图）`);});
+  }
   const kinds=new Set(out.map(s=>s.scene));
   if(dur>40&&kinds.size<4)warn(`全片只用了 ${kinds.size} 种场景（${[...kinds].join('、')}）：画面太单一`);
   if(out[0]&&out[0].t1>8)warn(`第一镜到 ${out[0].t1.toFixed(1)} 秒才换：开头要快，第一句话说完就进主体`);

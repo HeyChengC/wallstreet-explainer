@@ -48,3 +48,5 @@ python scripts/temp_voice.py film/script.json --asr
 - 交付时请用户重点听原声的剪口和语速。
 
 `scripts/mix.py` 已经实现了上面这些：配音、原声、音效、配乐，最后到 -14 LUFS。
+
+- **临时配音连不上（edge-tts 报 NoAudioReceived）**：不用等它，直接用正式配音，每句存成 `voice/<句子id>.final.wav` 再跑 `temp_voice.py script.json`。逐字对齐要用 whisper：设环境变量 `WHISPER_MODEL` 指向本机的模型文件夹，只写模型名会连网核对，网不好会一直等。

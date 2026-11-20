@@ -69,7 +69,12 @@ for li, l in enumerate(S['lines']):
             prev = [x[1] for x in chars[:i] if x[1] is not None]; nxt = [x[1] for x in chars[i:] if x[1] is not None]
             ch[1] = round(prev[-1] + .2 if prev else (nxt[0] if nxt else 0), 3)
     beats.append({'id': l['id'], 'text': l['text'], 'start': round(T[ks[0]], 3), 'end': round(E[ks[-1]], 3), 'wav': None, 'chars': chars})
-tl = {'fps': 30, 'duration': round(max(dur, beats[-1]['end'] + TAIL), 3), 'pre': 0, 'title': None, 'beats': beats, 'inserts': [], 'host': {'src': vid.replace(chr(92), '/'), 'offset': 0}}
+# 片子按口播原片的帧率渲染：24fps 的口播硬抽成 30fps 会每 5 帧重复一帧，人一动就一顿一顿（黄金那条开头"卡顿"就是这个）
+r = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'csv=p=0', vid], capture_output=True, text=True).stdout.strip() or '30/1'
+FPS = round(eval(r), 3) if '/' in r else float(r)
+FPS = int(FPS) if FPS == int(FPS) else FPS
+tl = {'fps': FPS, 'duration': round(max(dur, beats[-1]['end'] + TAIL), 3), 'pre': 0, 'title': None, 'beats': beats, 'inserts': [], 'host': {'src': vid.replace(chr(92), '/'), 'offset': 0}}
 json.dump(tl, open(out, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 for b in beats: print(f"{b['id']:5s} {b['start']:6.2f}–{b['end']:6.2f}  {b['text']}")
 print('片长', tl['duration'])
+print(f'帧率 {FPS}（口播帧也按这个帧率抽，不要抽成 30）')

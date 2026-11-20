@@ -1,0 +1,7 @@
+/* 竖屏片（1080×1920）自己的样式。零件在 lib/kit.css 和 lib/vert.css。 */
+html,body{margin:0;background:#000;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;transform-origin:0 0;background:#06070a;font-family:Mi,'Noto Sans SC','Microsoft YaHei',sans-serif;color:#fff}
+#stage *{box-sizing:border-box}
+/* 字幕：中线在画面 71% 高（y≈1363），白字细深边，一行 12–14 个字；film_base.js 负责拆句（subMax:12，按逗号拆） */
+.sub{position:absolute;left:40px;right:40px;top:1322px;z-index:90;text-align:center;font-family:Mi,'Noto Sans SC',sans-serif;font-weight:800;font-size:62px;line-height:1.25;letter-spacing:2px;color:#fff;-webkit-text-stroke:6px #17181c;paint-order:stroke fill;text-shadow:0 3px 10px rgba(0,0,0,.75)}
+.sub .lat{font-family:Mont,Montserrat,sans-serif;font-style:italic;font-weight:700;font-size:.94em;letter-spacing:0;margin:0 .06em}

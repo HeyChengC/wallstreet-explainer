@@ -29,7 +29,9 @@ const {chromium} = loadPlaywright();
 let LOCAL = {}; try { LOCAL = JSON.parse(fsSync.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'local.json'), 'utf8')); } catch {}
 const FF = process.env.FFMPEG ?? LOCAL.ffmpeg ?? 'ffmpeg';
 const here = path.resolve(arg('--dir') ?? '.'), PAGE = arg('--page') ?? 'index.html';
-const H = Number(arg('--h') ?? 720), Wd = Math.round(H * 16 / 9), out = arg('--out') ? path.resolve(arg('--out')) : path.join(here, 'out');
+// 舞台尺寸写在入口页里：window.STAGE={w:1080,h:1920} 是竖屏，没写就是 1920×1080。--h 一律是短边：横屏 720 → 1280×720，竖屏 720 → 720×1280
+let SW = 1920, SH = 1080; try { const m = fsSync.readFileSync(path.join(here, PAGE), 'utf8').match(/STAGE\s*=\s*\{\s*w\s*:\s*(\d+)\s*,\s*h\s*:\s*(\d+)/); if (m) { SW = +m[1]; SH = +m[2]; } } catch {}
+const VERT = SH > SW, H = Number(arg('--h') ?? 720), VW = VERT ? H : Math.round(H * SW / SH / 2) * 2, VH = VERT ? Math.round(H * SH / SW / 2) * 2 : H, out = arg('--out') ? path.resolve(arg('--out')) : path.join(here, 'out');
 await fs.mkdir(out, {recursive: true});
 const T = JSON.parse(await fs.readFile(path.join(here, 'timeline.json'), 'utf8'));
 // 文案和时间线对不对得上：script.json 改过、timeline.json 没重算时，后面报的"句子里找不到某个词"全是误导（报的是旧句子），先在这里拦住
@@ -65,7 +67,7 @@ if (!worker) {
 async function page() {
   const opt = {args: ['--force-color-profile=srgb', '--disable-lcd-text']};
   let b; try { b = await chromium.launch(opt); } catch (e) { b = await chromium.launch({...opt, channel: 'msedge'}).catch(() => { throw e; }); }
-  const p = await b.newPage({viewport: {width: Wd, height: H}}); const errs = [], warns = [];
+  const p = await b.newPage({viewport: {width: VW, height: VH}}); const errs = [], warns = [];
   p.on('pageerror', e => errs.push(e.message));
   p.on('console', m => { if (m.type() === 'error') errs.push(m.text()); else if (m.type() === 'warning' && /^\[(moves|kit)\]/.test(m.text())) warns.push(m.text()); });
   p.on('requestfailed', q => errs.push('请求失败 ' + q.url())); p.on('response', s => { if (s.status() >= 400) errs.push(s.status() + ' ' + s.url()); });
@@ -111,8 +113,8 @@ if (has('--sheet')) {
   }
   const esc = x => String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const rows = shots.map(s => `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #333"><div style="width:230px;font-size:15px;line-height:1.45"><b style="font-size:20px;color:#fff">${s.i + 1} ${esc(s.scene)}</b><br>${s.t0.toFixed(1)}–${s.t1.toFixed(1)} 秒<br>${esc(s.says)}</div>` +
-    cells.filter(c => c.i === s.i).map(c => `<div style="position:relative"><img src="${c.src}" style="width:480px;height:270px;display:block"><span style="position:absolute;left:6px;top:4px;font-size:13px;background:#000a;padding:1px 6px">${c.k} ${c.t.toFixed(2)}</span></div>`).join('') + '</div>').join('');
-  const sp = await b.newPage({viewport: {width: 1720, height: 600}});
+    cells.filter(c => c.i === s.i).map(c => `<div style="position:relative"><img src="${c.src}" style="width:${VERT ? 240 : 480}px;height:${VERT ? 427 : 270}px;display:block"><span style="position:absolute;left:6px;top:4px;font-size:13px;background:#000a;padding:1px 6px">${c.k} ${c.t.toFixed(2)}</span></div>`).join('') + '</div>').join('');
+  const sp = await b.newPage({viewport: {width: VERT ? 990 : 1720, height: 600}});
   await sp.setContent(`<html><body style="margin:0;background:#111;color:#ccc;font-family:'Microsoft YaHei',sans-serif">${rows}</body></html>`, {waitUntil: 'load'});
   await sp.screenshot({path: path.join(out, 'sheet.png'), fullPage: true});
   await b.close(); server.close();
@@ -163,14 +165,15 @@ if (has('--moves')) {
 const fps = T.fps ?? 30, N = Math.ceil(T.duration * fps);
 if (worker) {
   const [a, z] = worker.split(':').map(Number); const {b, p, errs} = await page();
-  const enc = spawn(FF, ['-v', 'error', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-framerate', String(fps), '-i', 'pipe:0', '-c:v', 'libx264', '-preset', 'medium',
+  const enc = spawn(FF, ['-v', 'error', '-y', '-f', 'image2pipe', '-vcodec', 'mjpeg', '-framerate', String(fps), '-i', 'pipe:0', '-c:v', 'libx264', '-preset', 'medium', '-threads', String(arg('--threads') ?? 4),   // 工作室规矩：ffmpeg 限 4 线程
     '-crf', H >= 1080 ? '14' : '18', '-pix_fmt', 'yuv420p', '-r', String(fps), path.join(out, `seg_${H}_${a}.mp4`)], {stdio: ['pipe', 'ignore', 'inherit']});
   for (let f = a; f < z; f++) { await p.evaluate(t => window.seek(t), f / fps); const buf = await p.screenshot({type: 'jpeg', quality: H >= 1080 ? 96 : 92}); if (!enc.stdin.write(buf)) await once(enc.stdin, 'drain'); }
   enc.stdin.end(); await once(enc, 'exit'); await b.close(); if (errs.length) { console.error([...new Set(errs)].slice(0, 5)); process.exit(2); } process.exit(0);
 }
 if (!has('--video')) { console.log('用 --stills 或 --video'); server.close(); process.exit(1); }
 const RG = arg('--range'), F0 = RG ? Math.round(Number(RG.split(':')[0]) * fps) : 0, F1 = RG ? Math.min(N, Math.round(Number(RG.split(':')[1]) * fps)) : N;
-const K = Number(arg('--workers') ?? 6), size = Math.ceil((F1 - F0) / K), starts = []; const t0 = Date.now();
+// 并发路数：每路一个浏览器页 + 一个 ffmpeg。1080p 一路开渲几秒内就多占约 2G（2026-11-05 实测：内存提交 85% → 95%，ffmpeg 限 4 线程也一样），开之前留够余量。16G 内存的机器默认 2 路
+const K = Number(arg('--workers') ?? 2), size = Math.ceil((F1 - F0) / K), starts = []; const t0 = Date.now();
 await Promise.all(Array.from({length: K}, (_, i) => { const a = F0 + i * size, z = Math.min(F1, a + size); if (a >= z) return null; starts.push(a);
   return new Promise((res, rej) => { const c = spawn(process.execPath, [fileURLToPath(import.meta.url), '--dir', here, '--page', PAGE, '--out', out, '--worker', `${a}:${z}`, '--port', String(port), '--h', String(H)], {stdio: 'inherit'}); c.on('exit', x => x === 0 ? res() : rej(new Error('worker ' + a))); }); }));
 starts.sort((a, b) => a - b);

@@ -1,6 +1,6 @@
 // host.js —— 真人口播层：主持人是这条片的"地面"，观众每离开她一会儿就回到她身边（学自小Lin说，refs/2026-11-02_YouTube_小Lin说口播/分析.md）。
 // 载入顺序：… kit.js → scenes.js → host.js → film.js。口播就是配音：时间线由 scripts/host_timeline.py 从口播里逐字对齐，片子的 t = 口播的 t。
-// 素材：assets/clips/host/0001.jpg…（30fps，footage 抽帧）+ assets/cut/host/0001.png…（matte.py + matte_clean.py 逐帧抠像，同尺寸）。
+// 素材：assets/clips/host/0001.jpg…（按口播原片帧率抽，和 timeline.json 的 fps 一致）+ assets/cut/host/0001.png…（matte.py + matte_clean.py 逐帧抠像，同尺寸）。
 //
 // 她在画面里的七种样子（从重到轻），在镜头表里这样写：
 //   1 房间全屏          {scene:'host'}                                 她在自己房间里讲；zoom 写景别跳
@@ -13,13 +13,15 @@
 (()=>{
 const {C,IO,lerp,L}=S25,{f1,f3,E,col,mixc,alpha,stage,brow:browK,appear,label}=KIT;
 const A=v=>v==null?[]:Array.isArray(v)?v:[v];
-const HOST={name:'host',fps:30,frames:0,box:null};
+const HOST={name:'host',fps:30,frames:0,box:null,calm:false};   // calm:true（选项，默认关）：窗口定住——不漂、不跟头、换样子一律硬切。"窗口一直动来动去"的毛病不在这些特效，在换得太勤：先按 references/presenter.md"节奏照小Lin说"重排（2026-11-05，《打仗黄金反而跌》v4）
 // 片子的 t → 第几帧（口播从 0 秒开始，和时间线同一个钟）
-const fi=t=>Math.max(1,Math.min(HOST.frames,Math.floor(t*HOST.fps+1e-6)+1));
+const fi=t=>Math.max(1,Math.min(HOST.frames,Math.round(t*HOST.fps)+1));   // 四舍五入：帧目录和片子帧率不同时（30fps 目录、24fps 片子）也正好取到原片每一帧，不会一帧用两次
 const roomSrc=t=>`assets/clips/${HOST.name}/${String(fi(t)).padStart(4,'0')}.jpg`;
 const cutSrc=t=>`assets/cut/${HOST.name}/${String(fi(t)).padStart(4,'0')}.png`;
 // 头肩中心（matte_clean.py 写的 cx，按帧）：圆窗、竖窗跟着她
 const headX=t=>HOST.box?.cx?.[fi(t)-1]??960;
+// 圆窗、竖窗里落在中心的点：calm 时用全片她头的中位数，窗口里的房间不跟着她晃
+const winX=t=>HOST.calm&&HOST.cx0!=null?HOST.cx0:headX(t);
 const FACE={y:330};   // 她脸的中心在原片里大概的高度（1080 坐标）：host.face 可以改
 
 // ---------- 房间：原片按机位 {x,y,s} 放大（x,y = 原片里落在画面中心的点）。东西挂在墙上、她的抠像压在最上面，三者用同一个机位，不会错位 ----------
@@ -35,7 +37,7 @@ function roomHTML(t,cam,o={}){
 // zoom:[{at, s, x}]：s 放大倍数（1 = 原片），x 往左/右让位（-1..1，正数 = 人往左挪、右边空出来）
 function zoomCam(zs,t0){
  const keys=[{t:-1e9,s:1,x:0},...zs].sort((a,b)=>a.t-b.t);
- return t=>{let k=keys[0];for(const z of keys)if(t>=z.t)k=z;const s=(k.s??1)*(1+.004*Math.max(0,t-Math.max(t0,k.t)));
+ return t=>{let k=keys[0];for(const z of keys)if(t>=z.t)k=z;const s=(k.s??1)*(1+(HOST.calm?0:.004)*Math.max(0,t-Math.max(t0,k.t)));
   const room=(1-1/s)*960,x=960+C(Math.abs(k.x??0))*room*Math.sign(k.x??0),y=540-(1-1/s)*540*(k.y??.35);
   return {x,y,s};};
 }
@@ -66,8 +68,8 @@ function lookIn(box,v,html,o={}){
  const l=box.w/2-v.c[0]*v.s,tp=box.h/2-v.c[1]*v.s;
  return `<div class="h-win${o.ring?' ring':''}" style="left:${f1(box.x)}px;top:${f1(box.y)}px;width:${f1(box.w)}px;height:${f1(box.h)}px;border-radius:${f1(box.r)}px"><div style="position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;transform:translate(${f1(l)}px,${f1(tp)}px) scale(${f3(v.s)})">${html}</div></div>`;
 }
-const pipView=t=>{const d=PIP.d,s=d/760;return {box:{x:PIP.cx-d/2,y:PIP.cy-d/2,w:d,h:d,r:d/2},c:[headX(t),FACE.y+60],s};};
-const winView=t=>{const s=WIN.h/1080*1.12;return {box:{...WIN},c:[headX(t)+10,FACE.y+215],s};};
+const pipView=t=>{const d=PIP.d,s=d/760;return {box:{x:PIP.cx-d/2,y:PIP.cy-d/2,w:d,h:d,r:d/2},c:[winX(t),FACE.y+60],s};};
+const winView=t=>{const s=WIN.h/1080*1.12;return {box:{...WIN},c:[winX(t)+10,FACE.y+215],s};};
 const fullView=()=>({box:{x:0,y:0,w:1920,h:1080,r:0},c:[960,540],s:1});
 // 两个"窗"之间插值（她从全屏缩进圆窗、从竖窗长回全屏）：框、圆角、原片放大倍数、落在中心的点一起走
 function morph(a,b,e){
@@ -78,11 +80,14 @@ function morph(a,b,e){
 // ---------- 绑定到 K ----------
 async function use(K,o={}){
  HOST.name=o.name??'host';
+ HOST.fps=o.fps??window.timeline?.fps??30;   // 口播帧按原片帧率抽，片子也按这个帧率渲染（host_timeline.py 写进 timeline.json）
  const F=K.F;
- HOST.frames=F.CL[HOST.name]??0;if(!HOST.frames)throw Error(`口播帧没有登记：assets/clips/counts.json 里要有 "${HOST.name}": 帧数（footage.py extract 或 ffmpeg 抽 30fps）`);
+ HOST.frames=F.CL[HOST.name]??0;if(!HOST.frames)throw Error(`口播帧没有登记：assets/clips/counts.json 里要有 "${HOST.name}": 帧数（footage.py extract 或 ffmpeg 按原片帧率抽）`);
  try{HOST.box=await fetch(`assets/cut/${HOST.name}/box.json`).then(r=>r.json());}catch{HOST.box=null;}
  if(!HOST.box)console.warn('[host] 没有抠像（assets/cut/host/box.json）：挂墙上的东西、身后换世界都要抠像，先跑 matte.py + matte_clean.py');
  if(o.faceY)FACE.y=o.faceY;
+ if(o.calm!=null)HOST.calm=!!o.calm;
+ {const cx=(HOST.box?.cx??[]).filter(v=>v!=null).sort((a,b)=>a-b);HOST.cx0=cx.length?cx[cx.length>>1]:null;}
  window.KIT_HOST.clipSrc=F.clipSrc;
  // 每一镜加 host:'pip' / 'window'：把那一镜的画面包一层
  const film0=K.film;
@@ -98,13 +103,19 @@ async function use(K,o={}){
   }
   // 提醒：完全没有她的时间
   let run=0,last=0;for(const s of out){const has=s.scene==='host'||s.p.host;if(has){run=0;}else{run+=s.t1-s.t0;if(run>4.5)K.warns.push(`${s.t1.toFixed(1)} 秒前有 ${run.toFixed(1)} 秒完全没有她：参考片没有她的一段只有 2.5–4.5 秒，加 host:'pip' 或回到房间`);}last=s.t1;}
+  // 提醒：她的样子换得太勤（小Lin说是一大段她讲、一大段证据，她的样子只在段落门上换；《打仗黄金反而跌》v2 换 7 次、最短 1.3 秒，看的人说"窗口一直动来动去"）
+  const segs=[];for(const s of out){const f=s.scene==='host'?'room':s.p.host??'none',g=segs[segs.length-1];if(g&&g.f===f)g.t1=s.t1;else segs.push({f,t0:s.t0,t1:s.t1});}
+  const NM={room:'在房间',pip:'在圆窗',window:'在竖窗',none:'不在'};
+  segs.forEach((g,i)=>{if(i>0&&i<segs.length-1&&g.t1-g.t0<3)K.warns.push(`${g.t0.toFixed(1)}–${g.t1.toFixed(1)} 秒她${NM[g.f]}只停了 ${(g.t1-g.t0).toFixed(1)} 秒就换：并进前后的段里（一段证据底下换几刀都用同一个窗；夹在两段证据中间的一句答案，做成整屏大字、她留在窗里说）`);});
+  if(last>0&&(segs.length-1)/last*30>5)K.warns.push(`她 ${last.toFixed(0)} 秒里换了 ${segs.length-1} 次样子（每 30 秒 ${((segs.length-1)/last*30).toFixed(1)} 次）：小Lin说是一大段她讲、一大段证据，换只在段落门上，30 秒 4–5 次以内`);
   return out;
  };
  // 圆窗：底下是这一镜自己的画面。上一镜是房间：她从全屏缩进圆里（0.5 秒）；上一镜已经有圆窗：圆不动（跨刀的那根线）；其他：淡入
  function pipWrap(base,t0,pf,prev){
-  const prevF=prev?.f;
+  const prevF=prev?.f,s0fade=!prev;
   return t=>{
    const u=t-t0;let h=base(t);
+   if(HOST.calm){const v=pipView(t),k=pf===null&&s0fade?C(u/.3):1;return h+`<div class="k-full" style="z-index:70;opacity:${f3(k)}">${winHTML(t,v.box,{s:v.s,c:v.c})}</div>`;}
    if(pf==='room'&&u<.5){const e=IO(u/.5),v=morph(fullView(),pipView(t),e),k=C(u/.32);
     return h+`<div class="k-full" style="z-index:70">${winHTML(t,v.box,{s:v.s,c:v.c,ring:e>.15})}</div>`+(k<1?`<div class="k-full" style="z-index:71;opacity:${f3(1-k)}">${lookIn(v.box,v,MV.still(prevF,t))}</div>`:'');}
    if(pf==='window'&&u<.45){const e=IO(u/.45),v=morph(winView(t),pipView(t),e);return h+`<div class="k-full" style="z-index:70">${winHTML(t,v.box,{s:v.s,c:v.c})}</div>`;}
@@ -116,7 +127,8 @@ async function use(K,o={}){
  function winWrap(base,t0,pf,prevF){
   const P=PANEL,sc=P.w/1920;
   return t=>{
-   const u=t-t0,pk=pf==='window'?1:E(C((u-.12)/.42)),v=pf==='room'&&u<.5?morph(fullView(),winView(t),IO(u/.5)):pf==='pip'&&u<.45?morph(pipView(t),winView(t),IO(u/.45)):winView(t);
+   const u=t-t0;if(HOST.calm){const v=winView(t);return `<div class="k-full">${stage({tone:'navy'})}</div><div class="k-full" style="background:radial-gradient(ellipse at 50% 50%,transparent 40%,#0008)"></div><div class="h-panel" style="left:${f1(P.x)}px;top:${f1(P.y)}px;width:${P.w}px;height:${P.h}px;border-radius:${P.r}px"><div style="position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;transform:scale(${f3(sc)})">${base(t)}</div></div><div class="k-full" style="z-index:70">${winHTML(t,v.box,{s:v.s,c:v.c})}</div>`;}
+   const pk=pf==='window'?1:E(C((u-.12)/.42)),v=pf==='room'&&u<.5?morph(fullView(),winView(t),IO(u/.5)):pf==='pip'&&u<.45?morph(pipView(t),winView(t),IO(u/.45)):winView(t);
    const k=C(u/.32),from=pf==='room'&&k<1&&prevF?`<div class="k-full" style="z-index:71;opacity:${f3(1-k)}">${lookIn(v.box,v,MV.still(prevF,t))}</div>`:'';
    const panel=`<div class="h-panel" style="left:${f1(P.x)}px;top:${f1(P.y)}px;width:${P.w}px;height:${P.h}px;border-radius:${P.r}px;opacity:${f3(pk)};transform:translateX(${f1((1-pk)*-90)}px)"><div style="position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;transform:scale(${f3(sc)})">${base(t)}</div></div>`;
    return `<div class="k-full">${stage({tone:'navy'})}</div><div class="k-full" style="background:radial-gradient(ellipse at 50% 50%,transparent 40%,#0008)"></div>${panel}<div class="k-full" style="z-index:70">${winHTML(t,v.box,{s:v.s,c:v.c})}</div>${from}`;
@@ -156,7 +168,7 @@ KIT.scene('host',{
     const bw=sw.brow?`<div class="s25brow" style="left:${f1(hx-gap-K2.megaW(ws[0]??'',size)+16)}px;top:${f1(top+size*.62)}px;opacity:${f3(g)}"><b>${sw.brow}</b>${sw.en?`<i>${sw.en}</i>`:''}</div>`:'';
     back=`<div style="position:absolute;left:-480px;top:-270px;width:2880px;height:1620px">${stage({tone:'navy',glow:sw.glow??'#c9a25a',gx:'50%',gy:'38%',go:.3})}</div>${mg}${bw}`;
     // 换的那一帧推一下（参考片：换背景时机位没动，只是字从小长大；这里加 2% 的推，让"换"这一下有重量）
-    cam={...cam,s:cam.s*(1+.02*E((t-sw.t)/.5))};
+    if(!HOST.calm)cam={...cam,s:cam.s*(1+.02*E((t-sw.t)/.5))};
     return roomHTML(t,cam,{back,mid:' ',cut:true})+`<div class="k-full" style="z-index:12;background:radial-gradient(ellipse 60% 70% at 50% 45%,transparent 50%,#000a)"></div>`;
    }
    const fl=items.find(it=>it.fillT!=null&&t>=it.fillT);
@@ -188,7 +200,7 @@ KIT.use=async F=>{
   out.forEach((s,i)=>{if(!ent[i])return;s.enter=ent[i];const prev=out[i-1];if(!prev)return;
    if(s.scene!=='host')throw Error(`第 ${i+1} 镜：enter:'${ent[i]}' 只给 scene:'host'（回到她的房间）用`);
    const base=s.f,t0=s.t0,pf=prev.p.host,pfun=prev.f;
-   s.f=ent[i]==='grow'?t=>{const u=t-t0;if(u>=.5||!pf)return base(t);
+   s.f=ent[i]==='grow'?t=>{const u=t-t0;if(u>=.5||!pf||HOST.calm)return base(t);
      const e=IO(u/.5),from=pf==='window'?winView(t):pipView(t),v=morph(from,fullView(),e);
      return `<div class="k-full">${MV.still(pfun,t0-.01)}</div><div class="k-full" style="z-index:70">${lookIn(v.box,v,base(t),{ring:e<.85})}</div>`;}
     :t=>{const u=t-t0;if(u>=.42)return base(t);

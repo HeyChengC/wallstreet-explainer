@@ -524,7 +524,7 @@ K.scene('article',{
  avoid:'原文要细读很久（压成一句再刷）；没有核实过的数',
  help:{img:'原文截图（snap_news.mjs 截的，宽一点没关系）',hl:'[[x,y,w,h],...]：截图上要刷黄的框。snap_news.mjs 打印的框直接用（它的截图是 3200 宽、框按 1600 宽的网页坐标，模板会换算）；别的截图写图片像素；折行就给两段',
   mock:"{source:'报道', date:'2026-10-02', title:'OpenAI 预计到 2030 年累计烧掉约 2800 亿美元', body:['第一段……','第二段……'], mark:'2800 亿美元'}：截不到原文时用核实过的文字排一页（通用样式，不放任何真实网站的标志）",
-  zoom:"'@b08:两千七百'：镜头开始推向刷黄处的时刻（默认这一镜过了三成）",hlAt:'荧光笔刷过的时刻（默认镜头快推到位的时候）',
+  zoom:"'@b08:两千七百'：镜头开始推向刷黄处的时刻（默认这一镜过了三成）",still:'true = 只推一次：开头不收、推到位不再慢推（真人口播片默认这样写）',hlAt:'荧光笔刷过的时刻（默认镜头快推到位的时候）',
   cssW:'hl 按多宽的网页坐标算（一般不用写：3200 宽的截图按 1600，别的按图片宽）',tilt:'截图斜几度（默认 -1.2；0 = 摆正）'},
  defaults:{tone:'navy'},minDur:1.8,
  beats:()=>2,
@@ -549,7 +549,8 @@ K.scene('article',{
   if(c.t1-(th+.45)<1)c.warn(`刷黄以后只停了 ${Math.max(0,c.t1-th-.45).toFixed(1)} 秒就切走：证据至少停 1 秒（zoom / hlAt 提前，或者 until 往后）`);
   // 机位：先看整页的上半（两边露出织物）→ 推向刷黄的那一句，停下来以后慢慢往里推
   const sA=Math.min(.92,1680/PW),camA={x:960,y:Y0+480/sA,s:sA},camZ={x:zx,y:zy,s:p.zoomS??Math.max(1.2,Math.min(1.8,1100/(zb[2]-zb[0]+300)))};   // zoomS：推近到几倍（默认按刷黄那句的宽度算）
-  const cam=camSeq([{t:c.t0,cam:{...camA,s:camA.s*.96}},{t:c.t0,cam:camA,d:.9},{t:tz,cam:camZ,d:1.05}],.02);
+  // still:true —— 只推一次（推向刷黄那句），开头不收、停下来不再慢推（真人口播片里她的窗口已经在画面上，证据别再多动）
+  const cam=p.still?camSeq([{t:c.t0,cam:camA},{t:tz,cam:camZ,d:1.05}],0):camSeq([{t:c.t0,cam:{...camA,s:camA.s*.96}},{t:c.t0,cam:camA,d:.9},{t:tz,cam:camZ,d:1.05}],.02);
   return t=>{
    const cc=cam(t),cp=cam(t-1/30),hk=C((t-th)/.45),zk=IO((t-tz)/1.05);
    let inner=p.img?`<img src="${p.img}" style="position:absolute;left:0;top:0;width:${PW}px;height:${f1(PH)}px">`:page.replace(/<u data-k><\/u>/g,`<u style="transform:scaleX(${f3(hk)})"></u>`);

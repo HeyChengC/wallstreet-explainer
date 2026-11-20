@@ -55,10 +55,10 @@ await K.film([
   flip:[{at:'@d04:全世界', words:['全球','第一']}]},
 
  // ---------- 反差：按真实面积并排 ----------
- {scene:'versus', until:'@d06', enter:'push', says:'OpenAI 估值很高，收入很小',
+ {scene:'versus', until:'@d06', says:'OpenAI 估值很高，收入很小',
   items:[
    {id:'val', name:'估值', color:'openai', tag:{label:'OpenAI 估值', value:'$8520亿'}},
-   {id:'rev', name:'收入', color:'teal', tag:{label:'今年收入', value:'$360亿'}, at:'@d05:收入'},
+   {id:'rev', name:'收入', color:'openai', tag:{label:'今年收入', value:'$360亿'}, at:'@d05:收入'},
   ]},
 
  // ---------- 出处：原文整页 → 特写 → 荧光笔 ----------
@@ -70,7 +70,7 @@ await K.film([
 
  // ---------- 白底图表：线跟着话画，累计数跟着滚 ----------
  {scene:'chart', until:'@d07', enter:'flat', says:'到 2030 年累计要亏 2780 亿',
-  title:'OpenAI 累计净烧钱（示意）', sub:'Cumulative cash burn',
+  title:'OpenAI 累计净烧钱（示意）', en:'Cumulative cash burn',
   x:['2026','2027','2028','2029','2030'], values:[-120,-380,-860,-1600,-2780], unit:'亿',
   draw:{at:'@d06:净烧', until:'@d06:两千七百'}, total:{label:'累计净烧', from:'$0', to:'-$2780亿'}},
 
@@ -107,8 +107,7 @@ await K.film([
 
  // ---------- 一群里拎出一个：平铺的卡片，主角放大前移、其余压暗 ----------
  {scene:'cards3d', until:'@d13', says:'各国都在砸钱，最大的是美国',
-  cards:[{title:'美国',color:'navy'},{title:'欧盟',color:'blue'},{title:'日本',color:'wine'},{title:'英国',color:'steel'},
-   {title:'法国',color:'navy'},{title:'德国',color:'slate'},{title:'韩国',color:'teal'},{title:'印度',color:'amber'}],
+  cards:[{title:'美国'},{title:'欧盟'},{title:'日本'},{title:'英国'},{title:'法国'},{title:'德国'},{title:'韩国'},{title:'印度'}],
   key:0, keyAt:'@d12:还是', text:{zh:'出手最大', at:'@d12:美国'}},
 
  // ---------- 排行榜：镜头从末尾走到第一名（示例数据） ----------

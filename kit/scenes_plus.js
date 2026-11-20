@@ -79,12 +79,14 @@ K.scene('chain',{
  use:'一句话里连着说三四个"所以"；每一环有一个画面或一个数',
  avoid:'环和环之间不是因果（并列用 stats / discs）；超过 4 环',
  need:['items'],
- help:{items:"[{at, title:'油价', img|value:'$104', sub:'10月30日', color}]：一环一张卡，at 念到它的时候亮起",arrow:'箭头上的字（可选，每段一样）'},
+ help:{items:"[{at, title:'油价', img|value:'$104', sub:'10月30日', color}]：一环一张卡，at 念到它的时候亮起",arrow:'箭头上的字（可选，每段一样）',x0:'卡片从哪儿排起（默认 60；同一镜加了左下圆窗时写 400，给左下圆窗让位）',x1:'排到哪儿（默认 1860）',gap:'卡片间距（默认 4 张 80）'},
  minDur:1.2,
  beats:p=>A(p.items).length,
  make(p,c){
-  const its=A(p.items).map((q,i)=>({...q,t:c.at(q.at)??c.t0+.2+i*.5})),n=its.length,W=n>=4?390:470,H=n>=4?560:520,G=n>=4?80:110;
-  const tot=n*W+(n-1)*G,x0=960-tot/2+W/2,y=500;
+  const its=A(p.items).map((q,i)=>({...q,t:c.at(q.at)??c.t0+.2+i*.5})),n=its.length,H=n>=4?560:520,G=p.gap??(n>=4?80:110);
+  // 卡片排在 [x0, x1] 里（默认整屏 60–1860）；有左下圆窗时写 x0:400 给它让位，卡片按区间宽度变窄
+  const L0=p.x0??60,L1=p.x1??1860,W=Math.min(n>=4?390:470,(L1-L0-(n-1)*G)/n);
+  const tot=n*W+(n-1)*G,x0=(L0+L1)/2-tot/2+W/2,y=500;
   return t=>{
    const cc={x:960,y:520,s:1+.012*(t-c.t0)},cp={...cc,s:1+.012*(t-1/30-c.t0)};
    let cur=-1;its.forEach((q,i)=>{if(t>=q.t)cur=i;});

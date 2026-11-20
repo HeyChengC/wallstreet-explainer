@@ -34,7 +34,7 @@ function pushSwap(t,o){
  const d=o.d??.42,dir=o.dir??-1;
  if(t>=o.t0+d)return o.to(t,{moving:false});
  use('pushSwap',o);
- const W=1920*dir,k=IO((t-o.t0)/d),kp=IO((t-1/30-o.t0)/d),dx=W*k,mbv=mbF(dx-W*kp,0),fl=mbv?`filter:${mbv}`:'';
+ const W=(window.STAGE?.w??1920)*dir,k=IO((t-o.t0)/d),kp=IO((t-1/30-o.t0)/d),dx=W*k,mbv=mbF(dx-W*kp,0),fl=mbv?`filter:${mbv}`:'';
  return `<div style="${full};transform:translateX(${f1(dx)}px);${fl}">${still(o.from,o.t0-.01)}</div>`+
   `<div style="${full};transform:translateX(${f1(dx-W)}px);${fl}">${o.to(t,{moving:true})}</div>`;
 }

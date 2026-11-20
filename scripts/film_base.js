@@ -17,7 +17,8 @@ async function init(o={}){
  const A=o.assets??'assets/';
  const T=await fetch(o.timeline??'timeline.json').then(r=>r.json());
  const stage=document.querySelector(o.stage??'#stage');
- const fit=()=>stage.style.transform=`scale(${Math.min(innerWidth/1920,innerHeight/1080)})`;addEventListener('resize',fit);fit();
+ const SW=window.STAGE?.w??1920,SH=window.STAGE?.h??1080;   // 舞台尺寸：竖屏片在 index.html 里写 window.STAGE={w:1080,h:1920}
+ const fit=()=>stage.style.transform=`scale(${Math.min(innerWidth/SW,innerHeight/SH)})`;addEventListener('resize',fit);fit();
 
  // 时间线：B(句) 开口、BE(句) 说完、cue(句,'词') 那个字的时刻；INS 原声插段
  const BT=Object.fromEntries(T.beats.map(b=>[b.id,b]));
