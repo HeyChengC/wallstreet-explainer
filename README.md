@@ -10,13 +10,12 @@
 
 **无人出镜版**：《AI 到底有多烧钱》，77 秒，GIF 是前 29 秒。
 
-<img src="examples/nvda-vertical/frames.jpg" alt="竖屏真人口播样片" width="100%">
+<p>
+<img src="examples/nvda-vertical/sample.gif" alt="竖屏真人口播样片" width="49%">
+<img src="examples/nvda-vertical/sample_nohost.gif" alt="竖屏无人出镜样片" width="49%">
+</p>
 
-**竖屏真人口播版**：《英伟达拒绝老黄回归》，29 秒，9:16。上面是每一镜落定的一帧。
-
-<img src="examples/nvda-vertical/frames_nohost.jpg" alt="竖屏无人出镜样片" width="100%">
-
-**竖屏无人出镜版**：同一条片、同一份镜头表，把她的实拍换成图，配音换成 TTS。
+**竖屏版**（9:16）：《英伟达拒绝老黄回归》，29 秒。左边是真人口播，右边是无人出镜：同一份镜头表，把她的实拍换成图，配音换成 TTS。
 
 GIF 没有声音。片中新闻截图和实拍为引用，出处见 [CREDITS.md](examples/ai-burn-money/CREDITS.md) 和 [竖屏样片的出处](examples/nvda-vertical/README.md)。
 

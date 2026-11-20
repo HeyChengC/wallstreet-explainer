@@ -165,7 +165,7 @@ S('vp-paper',{real:()=>true,minDur:1.5,
    let h=p.brow?`<div class="v-brow" style="left:62px;top:150px;${wipe(oc(th/.3))}">${p.brow}</div>`:'';
    if(p.title)h+=`<div class="v-h v-shadow" style="left:60px;top:208px;font-size:${fitH(p.title,88,720)}px;${wipe(oc((th-.1)/.35))}">${p.title}</div>`;
    h+=`<div class="v-abs" style="left:0;top:0;width:${W}px;height:${ZH}px;perspective:1400px;perspective-origin:50% 44%"><div class="vp-pp" style="left:${x0}px;top:${top}px;width:${cw}px;height:${f1(bh+mh)}px;transform-origin:0 50%;transform:rotateY(${f1(lerp(78,9,k)*(1-m))}deg) rotateX(${f1(4*(1-m))}deg) rotateZ(${f1(-1.6*(1-m))}deg);opacity:${f3(c01(th*10))}">${p.mast?`<div class="mast" style="height:${mh}px"><b>${p.mast}</b><u>${p.mastSub??''}</u></div>`:''}<div class="pg" style="top:${mh}px;height:${f1(bh)}px"><div style="position:absolute;left:0;top:0;width:${cw}px;height:${f1(ih)}px;transform-origin:${f1(hx)}px ${f1(hy)}px;transform:translate(${f1(tx)}px,${f1(ty)}px) scale(${f3(s)})"><img src="${p.img}" style="position:absolute;left:0;top:0;width:100%;height:100%">${hl.map((b,i)=>{const g=oc((t-ts[i])/.42);return g<=0?'':`<div class="v-hl" style="left:${f1(b.x*cw-6)}px;top:${f1(b.y*ih)}px;width:${f1((b.w*cw+12)*g)}px;height:${f1(b.h*ih)}px"></div>`;}).join('')}</div></div></div></div>`;
-   if(tg&&t>ttg-.02){const kk=oe((t-ttg)/.22);h+=`<div class="vp-tag" style="left:${tg.x??470}px;top:${f1(top+mh+bh-58)}px;transform:rotate(4deg) scale(${f3(kk)})"><i></i>${tg.text}</div>`;}
+   if(tg&&t>ttg-.02){const kk=oe((t-ttg)/.22);h+=`<div class="vp-tag k" style="${KV(tg.c??2)}left:${tg.x??470}px;top:${f1(top+mh+bh-58)}px;transform:rotate(4deg) scale(${f3(kk)})"><i></i>${tg.text}</div>`;}
    return h+ava(p,t);};}
 });
 
@@ -198,7 +198,7 @@ S('vp-voices',{real:()=>true,minDur:2,
   const geo=its.map((it,i)=>{const sd=i%2?1:-1,d=i?330:400;return {sd,d,x:sd<0?16+d/2:W-16-d/2,y:(i?770:900)+hy};});
   return t=>{let h=stage(p,c,zf,t,props(p,c,t,'behind'))+props(p,c,t,'back');
    its.forEach((it,i)=>{const g=geo[i],k=tail(t-ts[i]+.1,.1);if(k<=0)return;const dn=oc((t-td-i*.07)/.4);
-    h+=`<div class="vp-coin" style="left:${f1(g.x-g.d/2+g.sd*640*(1-k)+g.sd*34*dn)}px;top:${f1(g.y-g.d/2+70*dn)}px;width:${g.d}px;height:${g.d}px;transform:rotate(${f1(g.sd*-250*(1-k)+g.sd*15*dn)}deg);filter:grayscale(${f3(dn)}) brightness(${f3(1-.45*dn)})"><img src="${it.img}" style="object-position:${it.pos??'50% 20%'}"></div>`;
+    h+=`<div class="vp-coin" style="${KV(it.c??i+1)}left:${f1(g.x-g.d/2+g.sd*640*(1-k)+g.sd*34*dn)}px;top:${f1(g.y-g.d/2+70*dn)}px;width:${g.d}px;height:${g.d}px;transform:rotate(${f1(g.sd*-250*(1-k)+g.sd*15*dn)}deg);filter:grayscale(${f3(dn)}) brightness(${f3(1-.45*dn)})"><img src="${it.img}" style="object-position:${it.pos??'50% 20%'}"></div>`;
     const kn=oc((t-ts[i]-.28)/.3);if(kn>0)h+=`<div class="vp-coinname" style="left:${f1(g.x-150+g.sd*34*dn)}px;top:${f1(g.y+g.d/2-30+70*dn)}px;opacity:${f3(kn*(1-.5*dn))}"><b>${it.name}</b><u>${it.tag??''}</u></div>`;
     if(it.say){const ks=oe((t-ts[i]-.42)/.22)*(1-oc((t-td)/.18));if(ks>0)h+=`<div class="vp-say ${g.sd<0?'l':'r'}" style="${g.sd<0?'left':'right'}:44px;top:${f1(g.y-g.d/2-118)}px;transform:rotate(${g.sd*-4}deg) scale(${f3(ks)})">${it.say}<s></s></div>`;}});
    if(b&&t>tb-.02){const k=tail(t-tb,.07);h+=`<div class="vp-bar" style="top:${f1(lerp(-260,(p.barY??1052)+hy,k))}px;transform:rotate(-3deg)"><i></i><span style="font-size:${fsb}px">${pword(b.text,'accent',null,false)}</span>${b.en?`<u>${b.en}</u>`:''}<i></i></div>`;}

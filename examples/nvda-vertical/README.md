@@ -11,6 +11,7 @@
 | `film.js` | 镜头表：8 镜各用一个 `vp-` 组件，4 镜挂了道具（芯片、水桶、法槌、钞票） |
 | `shots.md` | 导演表，末尾有 v6–v9 每一版用户说了什么、改了什么 |
 | `frames.jpg` | 每镜落定的一帧 |
+| `sample.gif`、`sample_nohost.gif` | 两条成片的动图（没有声音） |
 | `film_nohost.js` | 同一条片的无人版镜头表（没有口播，配音是 TTS）：同一套组件，只是每镜多写一个 `bg`，改了三处位置 |
 | `frames_nohost.jpg` | 无人版每镜一帧 |
 

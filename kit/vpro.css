@@ -239,3 +239,8 @@
 /* 克制：没被强调的那几样再灰一档，一屏只有一样是全色 */
 .vp-col:not(.hl),.vp-rk:not(.hl) i{filter:saturate(.55) brightness(.8)}
 .vp-link:not(.hl) .no,.vp-link:not(.hl) .ph,.vp-row:not(.hl) .bd:not(.ok):not(.no),.vp-dot:not(.hl){filter:saturate(.7)}
+
+/* 讲故事的镜头里也用一点伴色：每个人的徽章一圈自己的颜色，原文纸上的标签用杏橙 */
+.vp-coin{box-shadow:0 0 0 6px var(--vp-ink),0 0 0 15px var(--vp-card2),0 0 0 20px var(--k,var(--vp-line)),0 9px 0 20px color-mix(in srgb,var(--kl,var(--vp-lo)) 70%,#000),0 34px 50px rgba(4,5,24,.6)}
+.vp-tag.k{background:linear-gradient(160deg,var(--kh),var(--k));color:#1d1a33;box-shadow:inset 0 2.5px 0 rgba(255,255,255,.55),0 5px 0 var(--kl),0 9px 0 color-mix(in srgb,var(--kl) 55%,#000),0 20px 34px rgba(4,5,24,.5)}
+.vp-tag.k i{background:#1d1a33}
